@@ -64,7 +64,6 @@ Se utilizará el paquete compartido para definir el cuerpo de la petición. Todo
 ## Casos de Borde y Errores
 | Escenario                   | Resultado Esperado                            | Código HTTP               |
 | ----------------------------| --------------------------------------------- | ------------------------- |
-| Pago inexistente    | Mensaje: "Ya existe un pago para ese socio en el período indicado"       | 409 Conflict              |
 | Intentar modificar campos no permitidos | Mensaje: "Solo se permite actualizar el estado y fechaPago"              | 400 Bad Request           |
 | Cambio de estado a `Pagado` | Registrar `fechaPago` y devolver pago actualizado con nuevo estado             |   200         |
 | Cambio de estado a `Vencido` | Devolver pago actualizado con nuevo estado              | 200           |
