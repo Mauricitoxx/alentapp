@@ -38,6 +38,7 @@ Se utilizará una actualización parcial mediante el método PUT. Todos los camp
     status?: 'Available' | 'Occupied' | 'Maintenance';
     member_id?: string | null; // UUID del socio o null para liberar
 }
+```
 
 ### Componentes de Arquitectura Hexagonal
 

@@ -43,6 +43,7 @@ Se definirá la entidad `Locker` con las siguientes propiedades (basado en el DE
     location: string;
     status?: 'Available' | 'Occupied' | 'Maintenance';
 }
+```
 
 ### Componentes de Arquitectura Hexagonal
 
