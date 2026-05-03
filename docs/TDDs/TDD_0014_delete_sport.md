@@ -20,7 +20,7 @@ Permitir a los administrativos dar de baja un deporte en el sistema.
 * El sistema debe pedir una confirmación explícita (advertencia visual) antes de proceder con el borrado.
 * El sistema debe validar que el deporte exista antes de intentar borrarlo.
 * El sistema debe realizar un borrado físico de la base de datos.
-* Si se elimina un deporte con inscriptos el sistema debe dar error.
+* El sistema no debe permitir eliminar un deporte con socios inscriptos.
 * Si el borrado es exitoso, la tabla debe actualizrse automáticamente.
 
 ## Diseño Técnico (RFC)
@@ -39,13 +39,13 @@ Al tratarse de una operación destructiva que solo requiere conocer el identific
 1. **Puerto**: `SportRepository` (Método `delete(id)`).
 2. **Caso de Uso**: `DeleteSportUseCase` (Comprueba existencia previa vía `findById` y delega la eliminación).
 3. **Adaptador de Salida**: `PostgresSportRepository` (Eliminación usando el método `delete` de Prisma).
-4. **Adaptador Entrada**: `SportController` (Ruta HTTP que extrae el `id` y devuelve un status 204).
+4. **Adaptador de Entrada**: `SportController` (Ruta HTTP que extrae el `id` y devuelve un status 204).
 
 ## Casos de Borde y Errores
 | Escenario                   | Resultado Esperado                            | Código HTTP               |
 | ----------------------------| --------------------------------------------- | ------------------------- |
-| Deporte inexistente     | Mensaje: "El deporte no existe"       | 400 Bad Request              |
-| Error de conexión a DB| Mensaje: "Error del motor de base de datos"              | 400 Bad Request           |
+| Deporte inexistente     | Mensaje: "El deporte no existe"       | 404 Not Found              |
+| Error de conexión a DB| Mensaje: "Error del motor de base de datos"              | 500 Internal Server Error           |
 | Eliminación exitosa   | Respuesta vacía   | 204 No Content    |
 
 ## Plan de Implementación
