@@ -10,7 +10,7 @@ titulo: [Alta de Obligaciones de Pago]
 ## Contexto de Negocio (PRD)
 
 ### Objetivo
-Permitir que un tesorero genere una nueva couta social pendiente para un socio, de manera que no se vea comprometida la integridad referencial y evitando registros duplicados.
+Permitir que un tesorero genere una nueva cuota social pendiente para un socio, de manera que no se vea comprometida la integridad referencial y evitando registros duplicados.
 
 
 ### User Persona
@@ -46,7 +46,7 @@ Definiremos los tipos en el paquete compartido para asegurar sincronización:
     amount: float; //45.000
     month: int; //10
     year: int; //2026
-    status: 'Pendiente' | 'Pagado' | 'Vencido'; //por default Pendiente
+    status: 'Pendiente' | 'Pagado' | 'Vencido' | 'Cancelado'; //por default Pendiente
     due_date: date; //2026-11-12
     payment_date: date; //null
     member_id: int; //4
