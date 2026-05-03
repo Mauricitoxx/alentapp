@@ -1,5 +1,5 @@
 ---
-id: 19
+id: 0019
 estado: Propuesto
 autor: Mauro Lista
 fecha: 2026-05-02
@@ -43,7 +43,7 @@ Se definirá la entidad EquipmentLoan con las siguientes propiedades y restricci
 ```ts
 {
     item_name: string;
-    due_date: date;
+    due_date: String;
     member_id: string; // UUID / FK
 }
 ```
@@ -62,7 +62,7 @@ Se definirá la entidad EquipmentLoan con las siguientes propiedades y restricci
 | Socio Inexistente           | Mensaje: "El socio no existe"               | 404 Not Found |
 | Fecha de devolución inválida | Mensaje: "La fecha de devolución debe ser posterior a la fecha actual" | 400 Bad Request |
 | Alta Exitosa                 | Mensaje: "Préstamo creado exitosamente"      | 201 Created |
-Error Base de Datos           | Mensaje: "Error al crear el préstamo"       | 500 Internal Server Error |
+| Error Base de Datos           | Mensaje: "Error al crear el préstamo"       | 500 Internal Server Error |
 
 ## Plan de Implementación
 1. Definir esquema de persistencia en schema.prisma y ejecutar la migración correspondiente.
