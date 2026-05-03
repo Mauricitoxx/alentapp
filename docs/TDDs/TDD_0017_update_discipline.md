@@ -6,7 +6,7 @@ fecha: 2026-05-02
 titulo: Modificacion de Sancion
 ---
 
-# TDD-0016: Modificacion de Sancion
+# TDD-0017: Modificacion de Sancion
 
 ## Contexto de Negocio (PRD)
 

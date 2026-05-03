@@ -24,7 +24,7 @@ Permitir al Tribunal de Disciplina registrar nuevas supensiones o faltas de cond
 - El sistema debe validar que el socio al que se le aplica la sancion exista.
 - El sistema debe validar que la fecha fin sea posterios a la fecha inicio.
 - Al finalizar, el sistema debe mostrar un mensaje de éxito y limpiar el formulario.
-- Si el campo 'is_total_suspencion' es verdadero, el socio debe quedar restrigido en el sistema durante el periodo de la sancion.
+- Si el campo 'is_total_suspension' es verdadero, el socio debe quedar restrigido en el sistema durante el periodo de la sancion.
 
 ## Diseño Técnico (RFC)
 
@@ -69,7 +69,7 @@ Definiremos los tipos en el paquete compartido para asegurar sincronización:
 
 | Escenario                  | Resultado Esperado                                                           | Código HTTP               |
 | -------------------------- | ---------------------------------------------------------------------------- | ------------------------- |
-| Fechas incongruentes       | Mensaje: "La fecha de fin debe ser estrictamente posterior a la de inicio"   | 409 Bad Request           |
+| Fechas incongruentes       | Mensaje: "La fecha de fin debe ser estrictamente posterior a la de inicio"   | 400 Bad Request           |
 | Socio inexistente          | Mensaje: "El socio especificado no existe".                                  | 400 Not Found.            |
 | Error de conexión a DB     | Mensaje: "Error interno, reintente más tarde"                                | 500 Internal Server Error |
 | Campos obligatorios nulos  | Mensaje: "Faltan campos requeridos".                                         | 400 Bad Request           |
