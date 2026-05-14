@@ -29,7 +29,7 @@ Permitir a los administrativos corregir o modificar información de un deporte e
 ### Contrato de API (@alentapp/shared)
 Se utilizará el paquete compartido para definir el cuerpo de la petición. Como la regla de negocio solo permite editar la descripción y el cupo, el atributo name no forma parte de este contrato para evitar modificaciones accidentales.
 
-*   **Endpoint**: `PUT /api/v1/sports/:id`
+*   **Endpoint**: `PATCH /api/v1/sports/:id`
 *   **Request Body**:
 ```ts
 {
