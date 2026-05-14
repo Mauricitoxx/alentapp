@@ -20,7 +20,6 @@ Permitir a los administrativos dar de baja un deporte en el sistema.
 * El sistema debe pedir una confirmación explícita (advertencia visual) antes de proceder con el borrado.
 * El sistema debe validar que el deporte exista antes de intentar borrarlo.
 * El sistema debe realizar un borrado físico de la base de datos.
-* El sistema no debe permitir eliminar un deporte con socios inscriptos.
 * Si el borrado es exitoso, la tabla debe actualizrse automáticamente.
 
 ## Diseño Técnico (RFC)
