@@ -45,3 +45,11 @@ export interface SportDTO {
   requires_medical_certificate: boolean;
   created_at: string; // ISO Date String
 }
+
+export interface CreateSportRequest {
+  name: string;
+  description: string;
+  max_capacity: number;
+  additional_price: number;
+  requires_medical_certificate: boolean;
+}
