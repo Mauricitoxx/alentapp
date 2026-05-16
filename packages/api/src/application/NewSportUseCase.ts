@@ -17,6 +17,7 @@ export class CreateSportUseCase {
 
         // 2. Persistencia a través de la interfaz (sin saber qué DB es)
         const nuevoSport = await this.sportRepository.create({
+            ...data,
             name: data.name,
             description: data.description,
             max_capacity: data.max_capacity,
