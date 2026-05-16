@@ -7,6 +7,12 @@ import { GetMembersUseCase } from './application/GetMembersUseCase.js';
 import { UpdateMemberUseCase } from './application/UpdateMemberUseCase.js';
 import { DeleteMemberUseCase } from './application/DeleteMemberUseCase.js';
 import { MemberController } from './delivery/MemberController.js';
+//IMPORTACIONES SPORT 
+import { PostgresSportRepository } from './infrastructure/PostgresSportRepository.js';
+import { CreateSportUseCase } from './application/NewSportUseCase.js';
+import { GetSportsUseCase } from './application/GetSportsUseCase.js';
+import { SportController } from './delivery/SportController.js';
+import { SportValidator } from './domain/services/SportValidator.js';
 
 export function buildApp() {
     const server = Fastify({
@@ -28,6 +34,7 @@ export function buildApp() {
         credentials: true,
     });
 
+    //MIEMBROS
     const memberRepo = new PostgresMemberRepository();
     const memberValidator = new MemberValidator(memberRepo);
     
@@ -43,11 +50,26 @@ export function buildApp() {
         deleteMemberUseCase
     );
 
+    //DEPORTES
+    const sportRepo = new PostgresSportRepository();
+    const sportValidator = new SportValidator(sportRepo); 
+    const createSportUseCase = new CreateSportUseCase(sportRepo, sportValidator);
+    const getSportsUseCase = new GetSportsUseCase(sportRepo);
+
+    const sportController = new SportController(
+        createSportUseCase,
+        getSportsUseCase
+    );
+
+    //RUTA DE MIEMBROS
     server.get('/api/v1/socios', memberController.getAll.bind(memberController));
     server.post('/api/v1/socios', memberController.create.bind(memberController));
     server.put('/api/v1/socios/:id', memberController.update.bind(memberController));
     server.delete('/api/v1/socios/:id', memberController.delete.bind(memberController));
-
+    //RUTA DE DEPORTES
+    server.get('/api/v1/sports', sportController.getAll.bind(sportController));
+    server.post('/api/v1/sports', sportController.create.bind(sportController));
+    
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
     });
