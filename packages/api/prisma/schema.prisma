@@ -44,7 +44,7 @@ model Sport {
     max_capacity      Int
     additional_price  Float         
     requires_medical_certificate    Boolean
-
+    created_at        DateTime      @default(now()) 
     @@map("sports") // Para que en la DB la tabla se llame 'sports' en minúscula
 
 }
