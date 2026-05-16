@@ -36,3 +36,20 @@ model Member {
 
     @@map("members") // Para que en la DB la tabla se llame 'members' en minúscula
 }
+
+//nuevo 
+enum LockerStatus {
+  Available
+  Occupied
+  Maintenance
+}
+
+model Locker {
+  id        String       @id @default(uuid())
+  number    Int          @unique
+  location  String
+  status    LockerStatus @default(Available)
+  member_id String?      // Opcional al inicio, permite null
+
+  @@map("lockers") // Para que en PostgreSQL la tabla se llame en minúscula y plural
+}
