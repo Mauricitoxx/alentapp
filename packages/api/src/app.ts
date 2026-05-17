@@ -27,6 +27,7 @@ import { PostgresEquipmentLoanRepository } from './infrastructure/PostgresEquipm
 import { EquipmentLoanValidator } from './domain/services/EquipmentLoanValidator.js';
 import { CreateEquipmentLoanUseCase } from './application/NewEquipmentLoanUseCase.js';
 import { GetEquipmentLoansUseCase } from './application/GetEquipmentLoansUseCase.js';
+import { UpdateEquipmentLoanUseCase } from './application/UpdateEquipmentLoanUseCase.js';
 import { EquipmentLoanController } from './delivery/EquipmentLoanController.js';
 
 export function buildApp() {
@@ -104,10 +105,12 @@ export function buildApp() {
         equipmentLoanValidator
     );
     const getEquipmentLoansUseCase = new GetEquipmentLoansUseCase(equipmentLoanRepo);
+    const updateEquipmentLoanUseCase = new UpdateEquipmentLoanUseCase(equipmentLoanRepo, equipmentLoanValidator);
 
     const equipmentLoanController = new EquipmentLoanController(
         createEquipmentLoanUseCase,
-        getEquipmentLoansUseCase
+        getEquipmentLoansUseCase,
+        updateEquipmentLoanUseCase
     );
 
     //RUTA DE MIEMBROS
@@ -123,6 +126,7 @@ export function buildApp() {
     //RUTA DE EQUIPMENT LOANS
     server.get('/api/v1/equipment-loans', equipmentLoanController.getAll.bind(equipmentLoanController));
     server.post('/api/v1/equipment-loans', equipmentLoanController.create.bind(equipmentLoanController));
+    server.put('/api/v1/equipment-loans/:id', equipmentLoanController.update.bind(equipmentLoanController));
     
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
