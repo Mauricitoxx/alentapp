@@ -14,6 +14,13 @@ import { GetSportsUseCase } from './application/GetSportsUseCase.js';
 import { SportController } from './delivery/SportController.js';
 import { SportValidator } from './domain/services/SportValidator.js';
 
+//IMPORTACIONES EQUIPMENT LOAN
+import { PostgresEquipmentLoanRepository } from './infrastructure/PostgresEquipmentLoanRepository.js';
+import { EquipmentLoanValidator } from './domain/services/EquipmentLoanValidator.js';
+import { CreateEquipmentLoanUseCase } from './application/NewEquipmentLoanUseCase.js';
+import { GetEquipmentLoansUseCase } from './application/GetEquipmentLoansUseCase.js';
+import { EquipmentLoanController } from './delivery/EquipmentLoanController.js';
+
 export function buildApp() {
     const server = Fastify({
         logger: {
@@ -61,6 +68,21 @@ export function buildApp() {
         getSportsUseCase
     );
 
+    //EQUIPMENT LOANS
+    const equipmentLoanRepo = new PostgresEquipmentLoanRepository();
+    const equipmentLoanValidator = new EquipmentLoanValidator();
+    const createEquipmentLoanUseCase = new CreateEquipmentLoanUseCase(
+        equipmentLoanRepo, 
+        memberRepo, 
+        equipmentLoanValidator
+    );
+    const getEquipmentLoansUseCase = new GetEquipmentLoansUseCase(equipmentLoanRepo);
+
+    const equipmentLoanController = new EquipmentLoanController(
+        createEquipmentLoanUseCase,
+        getEquipmentLoansUseCase
+    );
+
     //RUTA DE MIEMBROS
     server.get('/api/v1/socios', memberController.getAll.bind(memberController));
     server.post('/api/v1/socios', memberController.create.bind(memberController));
@@ -69,6 +91,10 @@ export function buildApp() {
     //RUTA DE DEPORTES
     server.get('/api/v1/sports', sportController.getAll.bind(sportController));
     server.post('/api/v1/sports', sportController.create.bind(sportController));
+
+    //RUTA DE EQUIPMENT LOANS
+    server.get('/api/v1/equipment-loans', equipmentLoanController.getAll.bind(equipmentLoanController));
+    server.post('/api/v1/equipment-loans', equipmentLoanController.create.bind(equipmentLoanController));
     
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
