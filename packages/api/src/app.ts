@@ -10,11 +10,32 @@ import { UpdateMemberUseCase } from './application/UpdateMemberUseCase.js';
 import { DeleteMemberUseCase } from './application/DeleteMemberUseCase.js';
 import { MemberController } from './delivery/MemberController.js';
 
-// === NUEVOS IMPORTS: CASILLEROS (TDD-010) ===
+// Imports de Casilleros (Lockers)
 import { PostgresLockerRepository } from './infrastructure/PostgresLockerRepository.js';
 import { LockerValidator } from './domain/services/LockerValidator.js';
 import { NewLockerUseCase } from './application/NewLockerUseCase.js';
 import { LockerController } from './delivery/LockerController.js';
+
+// Discipline
+import { PostgresDisciplineRepository } from './infrastructure/PostgresDisciplineRepository.js';
+import { DisciplineValidator } from './domain/services/DisciplineValidator.js';
+import { CreateDisciplineUseCase } from './application/CreateDisciplineUseCase.js';
+import { GetDisciplinesUseCase } from './application/GetDisciplinesUseCase.js';
+import { DisciplineController } from './delivery/DisciplineController.js';
+
+// Sport
+import { PostgresSportRepository } from './infrastructure/PostgresSportRepository.js';
+import { CreateSportUseCase } from './application/NewSportUseCase.js';
+import { GetSportsUseCase } from './application/GetSportsUseCase.js';
+import { SportController } from './delivery/SportController.js';
+import { SportValidator } from './domain/services/SportValidator.js';
+
+// Importaciones Equipment Loan
+import { PostgresEquipmentLoanRepository } from './infrastructure/PostgresEquipmentLoanRepository.js';
+import { EquipmentLoanValidator } from './domain/services/EquipmentLoanValidator.js';
+import { CreateEquipmentLoanUseCase } from './application/NewEquipmentLoanUseCase.js';
+import { GetEquipmentLoansUseCase } from './application/GetEquipmentLoansUseCase.js';
+import { EquipmentLoanController } from './delivery/EquipmentLoanController.js';
 
 export function buildApp() {
     const server = Fastify({
@@ -37,8 +58,10 @@ export function buildApp() {
     });
 
     // ----------------------------------------------------------------
-    // 1. CABLEADO DE CAPAS: SOCIOS
+    // 1. CABLEADO DE CAPAS (DEPENDENCY INJECTION)
     // ----------------------------------------------------------------
+
+    // Miembros / Socios
     const memberRepo = new PostgresMemberRepository();
     const memberValidator = new MemberValidator(memberRepo);
     
@@ -54,9 +77,49 @@ export function buildApp() {
         deleteMemberUseCase
     );
 
-    // ----------------------------------------------------------------
-    // 2. CABLEADO DE CAPAS: CASILLEROS (Tu nuevo circuito)
-    // ----------------------------------------------------------------
+    // Discipline (Sanciones)
+    const disciplineRepo = new PostgresDisciplineRepository();
+    const disciplineValidator = new DisciplineValidator();
+
+    const createDisciplineUseCase = new CreateDisciplineUseCase(
+        disciplineRepo,
+        memberRepo,
+        disciplineValidator,
+    );
+    const getDisciplinesUseCase = new GetDisciplinesUseCase(disciplineRepo);
+
+    const disciplineController = new DisciplineController(
+        createDisciplineUseCase,
+        getDisciplinesUseCase,
+    );
+
+    // Deportes (Sports)
+    const sportRepo = new PostgresSportRepository();
+    const sportValidator = new SportValidator(sportRepo);
+    const createSportUseCase = new CreateSportUseCase(sportRepo, sportValidator);
+    const getSportsUseCase = new GetSportsUseCase(sportRepo);
+
+    const sportController = new SportController(
+        createSportUseCase,
+        getSportsUseCase
+    );
+
+    // Equipment Loans (Préstamos)
+    const equipmentLoanRepo = new PostgresEquipmentLoanRepository();
+    const equipmentLoanValidator = new EquipmentLoanValidator();
+    const createEquipmentLoanUseCase = new CreateEquipmentLoanUseCase(
+        equipmentLoanRepo, 
+        memberRepo, 
+        equipmentLoanValidator
+    );
+    const getEquipmentLoansUseCase = new GetEquipmentLoansUseCase(equipmentLoanRepo);
+
+    const equipmentLoanController = new EquipmentLoanController(
+        createEquipmentLoanUseCase,
+        getEquipmentLoansUseCase
+    );
+
+    // Casilleros (Lockers)
     const lockerRepo = new PostgresLockerRepository();
     const lockerValidator = new LockerValidator(lockerRepo);
     const newLockerUseCase = new NewLockerUseCase(lockerRepo, lockerValidator);
@@ -64,7 +127,7 @@ export function buildApp() {
     const lockerController = new LockerController(newLockerUseCase);
 
     // ----------------------------------------------------------------
-    // 3. REGISTRO DE RUTAS EN EL SERVIDOR
+    // 2. REGISTRO DE RUTAS EN EL SERVIDOR
     // ----------------------------------------------------------------
     
     // Endpoints de Socios
@@ -73,7 +136,19 @@ export function buildApp() {
     server.put('/api/v1/socios/:id', memberController.update.bind(memberController));
     server.delete('/api/v1/socios/:id', memberController.delete.bind(memberController));
 
-    // Endpoint de Casilleros: Alta (TDD-010)
+    // Endpoints de Disciplinas
+    server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
+    server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
+
+    // Endpoints de Deportes
+    server.get('/api/v1/sports', sportController.getAll.bind(sportController));
+    server.post('/api/v1/sports', sportController.create.bind(sportController));
+
+    // Endpoints de Equipment Loans
+    server.get('/api/v1/equipment-loans', equipmentLoanController.getAll.bind(equipmentLoanController));
+    server.post('/api/v1/equipment-loans', equipmentLoanController.create.bind(equipmentLoanController));
+
+    // Endpoint de Casilleros: Alta
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
 
     // Ruta base de chequeo rápida

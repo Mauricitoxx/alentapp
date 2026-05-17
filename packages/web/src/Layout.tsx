@@ -34,7 +34,19 @@ function Layout() {
                             </Text>
                         </RouterLink>
 
-                        {/* === LINK AGREGADO: LOCKERS === */}
+                        <RouterLink to="/disciplines">
+                            <Text
+                                fontWeight="semibold"
+                                fontSize="sm"
+                                textTransform="uppercase"
+                                letterSpacing="wider"
+                                color="fg.muted"
+                                _hover={{ color: 'blue.500', textDecoration: 'none' }}
+                            >
+                                Sanciones
+                            </Text>
+                        </RouterLink>
+
                         <RouterLink to="/lockers">
                             <Text 
                                 fontWeight="semibold" 
@@ -45,6 +57,32 @@ function Layout() {
                                 _hover={{ color: "blue.500", textDecoration: "none" }}
                             >
                                 Lockers
+                            </Text>
+                        </RouterLink>
+
+                        <RouterLink to="/sports">
+                            <Text 
+                                fontWeight="semibold" 
+                                fontSize="sm" 
+                                textTransform="uppercase" 
+                                letterSpacing="wider"
+                                color="fg.muted"
+                                _hover={{ color: "blue.500", textDecoration: "none" }}
+                            >
+                                Deportes
+                            </Text>
+                        </RouterLink>
+
+                        <RouterLink to="/equipment-loans">
+                            <Text 
+                                fontWeight="semibold" 
+                                fontSize="sm" 
+                                textTransform="uppercase" 
+                                letterSpacing="wider"
+                                color="fg.muted"
+                                _hover={{ color: "blue.500", textDecoration: "none" }}
+                            >
+                                Préstamos
                             </Text>
                         </RouterLink>
                     </HStack>
