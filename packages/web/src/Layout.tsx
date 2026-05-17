@@ -56,7 +56,7 @@ function Layout() {
                                 color="fg.muted"
                                 _hover={{ color: "blue.500", textDecoration: "none" }}
                             >
-                                Lockers
+                               Casilleros
                             </Text>
                         </RouterLink>
 
