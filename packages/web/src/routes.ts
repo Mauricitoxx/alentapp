@@ -4,6 +4,7 @@ import { MembersView } from "./views/Members";
 import { DisciplinesView } from './views/Disciplines';
 import { HomeView } from "./views/Home";
 import { SportsView } from "./views/Sports";
+import { EquipmentLoansView } from "./views/EquipmentLoans";
 import Layout from "./Layout";
 
 export let router = createBrowserRouter([
@@ -25,6 +26,10 @@ export let router = createBrowserRouter([
             {
         path: "/sports",
         Component: SportsView,
+      },
+      {
+        path: "/equipment-loans",
+        Component: EquipmentLoansView,
       },
     ],
   },
