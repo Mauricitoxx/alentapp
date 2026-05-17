@@ -23,6 +23,7 @@ import { CreateDisciplineUseCase } from './application/CreateDisciplineUseCase.j
 import { GetDisciplinesUseCase } from './application/GetDisciplinesUseCase.js';
 import { DisciplineController } from './delivery/DisciplineController.js';
 import { UpdateDisciplineUseCase } from './application/UpdateDisciplineUseCase.js';
+import { DeleteDisciplineUseCase } from './application/DeleteDisciplineUseCase.js';
 
 // Sport
 import { PostgresSportRepository } from './infrastructure/PostgresSportRepository.js';
@@ -37,6 +38,7 @@ import { EquipmentLoanValidator } from './domain/services/EquipmentLoanValidator
 import { CreateEquipmentLoanUseCase } from './application/NewEquipmentLoanUseCase.js';
 import { GetEquipmentLoansUseCase } from './application/GetEquipmentLoansUseCase.js';
 import { UpdateEquipmentLoanUseCase } from './application/UpdateEquipmentLoanUseCase.js';
+import { DeleteEquipmentLoanUseCase } from './application/DeleteEquipmentLoanUseCase.js';
 import { EquipmentLoanController } from './delivery/EquipmentLoanController.js';
 
 export function buildApp() {
@@ -90,11 +92,13 @@ export function buildApp() {
     );
     const getDisciplinesUseCase = new GetDisciplinesUseCase(disciplineRepo);
     const updateDisciplineUseCase = new UpdateDisciplineUseCase(disciplineRepo, disciplineValidator);
+    const deleteDisciplineUseCase = new DeleteDisciplineUseCase(disciplineRepo, memberRepo);
 
     const disciplineController = new DisciplineController(
         createDisciplineUseCase,
         getDisciplinesUseCase,
         updateDisciplineUseCase,
+        deleteDisciplineUseCase,
     );
 
     // Deportes (Sports)
@@ -118,11 +122,13 @@ export function buildApp() {
     );
     const getEquipmentLoansUseCase = new GetEquipmentLoansUseCase(equipmentLoanRepo);
     const updateEquipmentLoanUseCase = new UpdateEquipmentLoanUseCase(equipmentLoanRepo, equipmentLoanValidator);
+    const deleteEquipmentLoanUseCase = new DeleteEquipmentLoanUseCase(equipmentLoanRepo);
 
     const equipmentLoanController = new EquipmentLoanController(
         createEquipmentLoanUseCase,
         getEquipmentLoansUseCase,
-        updateEquipmentLoanUseCase
+        updateEquipmentLoanUseCase,
+        deleteEquipmentLoanUseCase
     );
 
     // Casilleros (Lockers)
@@ -150,6 +156,7 @@ export function buildApp() {
     server.get('/api/v1/equipment-loans', equipmentLoanController.getAll.bind(equipmentLoanController));
     server.post('/api/v1/equipment-loans', equipmentLoanController.create.bind(equipmentLoanController));
     server.put('/api/v1/equipment-loans/:id', equipmentLoanController.update.bind(equipmentLoanController));
+    server.delete('/api/v1/equipment-loans/:id', equipmentLoanController.delete.bind(equipmentLoanController))
 
     // Endpoints de Disciplinas
     server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
@@ -158,8 +165,13 @@ export function buildApp() {
 
     // Endpoint de Casilleros: Alta
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
-
-    // Ruta base de chequeo rápida
+    
+    // RUTA DE DISCIPLINAS
+    server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
+    server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
+    server.put('/api/v1/disciplines/:id', disciplineController.update.bind(disciplineController));
+    server.delete('/api/v1/disciplines/:id', disciplineController.delete.bind(disciplineController));
+    
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
     });
