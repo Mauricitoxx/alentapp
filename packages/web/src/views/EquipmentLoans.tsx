@@ -11,7 +11,7 @@ import {
   Center,
   Input,
 } from "@chakra-ui/react";
-import { LuPlus, LuRefreshCw, LuPen } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuPen, LuTrash } from "react-icons/lu";
 import { useEffect, useState } from "react";
 import { equipmentLoansService } from "../services/equipmentLoans"; 
 import { membersService } from "../services/members";
@@ -106,6 +106,17 @@ export function EquipmentLoansView() {
       alert(err.message || "Error al procesar el préstamo");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("¿Estás seguro de que deseas eliminar este préstamo?")) {
+      try {
+        await equipmentLoansService.delete(id);
+        fetchLoans();
+      } catch (err: any) {
+        alert(err.message || "Error al eliminar el préstamo");
+      }
     }
   };
 
@@ -248,9 +259,14 @@ export function EquipmentLoansView() {
                     <Table.Cell>{new Date(loan.loan_date).toLocaleDateString()}</Table.Cell>
                     <Table.Cell>{new Date(loan.due_date).toLocaleDateString()}</Table.Cell>
                     <Table.Cell textAlign="right">
-                      <Button size="sm" variant="ghost" colorPalette="blue" onClick={() => openEditModal(loan)}>
-                        <LuPen />
-                      </Button>
+                      <HStack gap="2" justify="flex-end">
+                        <Button size="sm" variant="ghost" colorPalette="blue" onClick={() => openEditModal(loan)}>
+                          <LuPen />
+                        </Button>
+                        <Button size="sm" variant="ghost" colorPalette="red" onClick={() => handleDelete(loan.id)}>
+                          <LuTrash />
+                        </Button>
+                      </HStack>
                     </Table.Cell>
                   </Table.Row>
                 ))}
