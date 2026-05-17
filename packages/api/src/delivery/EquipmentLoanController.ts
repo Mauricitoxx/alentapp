@@ -61,8 +61,8 @@ export class EquipmentLoanController {
             if (error.message === 'Estado de prestamo invalido') {
                 return reply.status(400).send({ error: error.message });
             }
-            if (error.message === 'Fecha de devolucion invalida') {
-                return reply.status(409).send({ error: error.message });
+            if (error.message === 'Fecha de devolucion invalida' || error.message.includes('posterior a la fecha actual')) {
+                return reply.status(409).send({ error: 'Fecha de devolucion invalida' });
             }
 
             return reply.status(500).send({ error: "Error interno, reintente más tarde" });
