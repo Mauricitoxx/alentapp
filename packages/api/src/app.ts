@@ -162,16 +162,11 @@ export function buildApp() {
     server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
     server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
     server.put('/api/v1/disciplines/:id', disciplineController.update.bind(disciplineController));
+    server.delete('/api/v1/disciplines/:id', disciplineController.delete.bind(disciplineController));
 
     // Endpoint de Casilleros: Alta
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
-    
-    // RUTA DE DISCIPLINAS
-    server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
-    server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
-    server.put('/api/v1/disciplines/:id', disciplineController.update.bind(disciplineController));
-    server.delete('/api/v1/disciplines/:id', disciplineController.delete.bind(disciplineController));
-    
+
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
     });
