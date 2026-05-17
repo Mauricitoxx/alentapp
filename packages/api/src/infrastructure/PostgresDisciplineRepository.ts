@@ -62,6 +62,10 @@ export class PostgresDisciplineRepository implements DisciplineRepository {
     return this.mapToDTO(discipline);
     }
     
+    async delete(id: string): Promise<void> {
+    await prisma.discipline.delete({ where: { id } });
+    }
+
     private mapToDTO(d: DBDiscipline): DisciplineDTO {
         return {
             id: d.id,
