@@ -15,6 +15,7 @@ import { CreateDisciplineUseCase } from './application/CreateDisciplineUseCase.j
 import { GetDisciplinesUseCase } from './application/GetDisciplinesUseCase.js';
 import { DisciplineController } from './delivery/DisciplineController.js';
 import { UpdateDisciplineUseCase } from './application/UpdateDisciplineUseCase.js';
+import { DeleteDisciplineUseCase } from './application/DeleteDisciplineUseCase.js';
 
 // Sport
 import { PostgresSportRepository } from './infrastructure/PostgresSportRepository.js';
@@ -70,11 +71,13 @@ export function buildApp() {
     );
     const getDisciplinesUseCase = new GetDisciplinesUseCase(disciplineRepo);
     const updateDisciplineUseCase = new UpdateDisciplineUseCase(disciplineRepo, disciplineValidator);
+    const deleteDisciplineUseCase = new DeleteDisciplineUseCase(disciplineRepo, memberRepo);
 
     const disciplineController = new DisciplineController(
         createDisciplineUseCase,
         getDisciplinesUseCase,
         updateDisciplineUseCase,
+        deleteDisciplineUseCase,
     );
 
 
@@ -94,6 +97,7 @@ export function buildApp() {
     server.post('/api/v1/socios', memberController.create.bind(memberController));
     server.put('/api/v1/socios/:id', memberController.update.bind(memberController));
     server.delete('/api/v1/socios/:id', memberController.delete.bind(memberController));
+
     //RUTA DE DEPORTES
     server.get('/api/v1/sports', sportController.getAll.bind(sportController));
     server.post('/api/v1/sports', sportController.create.bind(sportController));
@@ -102,7 +106,8 @@ export function buildApp() {
     server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
     server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
     server.put('/api/v1/disciplines/:id', disciplineController.update.bind(disciplineController));
-
+    server.delete('/api/v1/disciplines/:id', disciplineController.delete.bind(disciplineController));
+    
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
     });
