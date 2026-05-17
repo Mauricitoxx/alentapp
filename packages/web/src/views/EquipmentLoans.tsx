@@ -14,7 +14,9 @@ import {
 import { LuPlus, LuRefreshCw } from "react-icons/lu";
 import { useEffect, useState } from "react";
 import { equipmentLoansService } from "../services/equipmentLoans"; 
-import type { EquipmentLoanDTO, CreateEquipmentLoanRequest } from "@alentapp/shared";
+import { membersService } from "../services/members";
+import type { EquipmentLoanDTO, CreateEquipmentLoanRequest, MemberDTO } from "@alentapp/shared";
+import { MemberCombobox } from "../components/MemberCombobox";
 import { 
   DialogRoot, 
   DialogContent, 
@@ -29,6 +31,7 @@ import { Field } from "../components/ui/field";
 
 export function EquipmentLoansView() {
   const [loans, setLoans] = useState<EquipmentLoanDTO[]>([]);
+  const [members, setMembers] = useState<MemberDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -79,8 +82,18 @@ export function EquipmentLoansView() {
     }
   };
 
+  const fetchMembers = async () => {
+    try {
+      const data = await membersService.getAll();
+      setMembers(data);
+    } catch (err: any) {
+      console.error("Error fetching members:", err);
+    }
+  };
+
   useEffect(() => {
     fetchLoans();
+    fetchMembers();
   }, []);
 
   return (
@@ -97,7 +110,7 @@ export function EquipmentLoansView() {
             <Button variant="outline" onClick={fetchLoans} disabled={isLoading}>
               <LuRefreshCw /> Actualizar
             </Button>
-            <Button colorPalette="cyan" size="md" onClick={openCreateModal}>
+            <Button colorPalette="blue" size="md" onClick={openCreateModal}>
               <LuPlus /> Nuevo Préstamo
             </Button>
           </HStack>
@@ -110,12 +123,11 @@ export function EquipmentLoansView() {
             </DialogHeader>
             <DialogBody>
               <Stack gap="4">
-                <Field label="ID del Socio" required>
-                  <Input 
-                    placeholder="Ej. f1a3593e..." 
-                    value={formData.member_id}
-                    onChange={(e) => setFormData({ ...formData, member_id: e.target.value })}
-                    required
+                <Field label="Socio" required>
+                  <MemberCombobox
+                    members={members}
+                    selectedId={formData.member_id}
+                    onSelect={(id) => setFormData({ ...formData, member_id: id })}
                   />
                 </Field>
                 <Field label="Artículo prestado" required>
@@ -140,7 +152,7 @@ export function EquipmentLoansView() {
               <DialogActionTrigger asChild>
                 <Button variant="outline">Cancelar</Button>
               </DialogActionTrigger>
-              <Button type="submit" colorPalette="cyan" loading={isSubmitting}>
+              <Button type="submit" colorPalette="blue" loading={isSubmitting}>
                 Crear Préstamo
               </Button>
             </DialogFooter>
