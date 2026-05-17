@@ -56,4 +56,20 @@ export const sportsService = {
     return result.data; // Retorna el SportDTO con los datos actualizados
   },
 
+  // Elimina un deporte por su ID
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/sports/${id}`, {
+      method: 'DELETE', 
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      // Captura el error 404 (si no existe) o 500 (si tiene restricciones de clave foránea)
+      throw new Error(errorData.error || 'Error al intentar eliminar el deporte');
+    }
+    
+    // Al ser una respuesta 204 (No Content), no hacemos response.json() 
+    // ya que el cuerpo viene vacío y rompería el flujo.
+  },
+
 };
