@@ -7,7 +7,15 @@ import { GetMembersUseCase } from './application/GetMembersUseCase.js';
 import { UpdateMemberUseCase } from './application/UpdateMemberUseCase.js';
 import { DeleteMemberUseCase } from './application/DeleteMemberUseCase.js';
 import { MemberController } from './delivery/MemberController.js';
-//IMPORTACIONES SPORT 
+
+// Discipline
+import { PostgresDisciplineRepository } from './infrastructure/PostgresDisciplineRepository.js';
+import { DisciplineValidator } from './domain/services/DisciplineValidator.js';
+import { CreateDisciplineUseCase } from './application/CreateDisciplineUseCase.js';
+import { GetDisciplinesUseCase } from './application/GetDisciplinesUseCase.js';
+import { DisciplineController } from './delivery/DisciplineController.js';
+
+// Sport
 import { PostgresSportRepository } from './infrastructure/PostgresSportRepository.js';
 import { CreateSportUseCase } from './application/NewSportUseCase.js';
 import { GetSportsUseCase } from './application/GetSportsUseCase.js';
@@ -57,9 +65,28 @@ export function buildApp() {
         deleteMemberUseCase
     );
 
-    //DEPORTES
+    // Discipline
+    const disciplineRepo = new PostgresDisciplineRepository();
+    const disciplineValidator = new DisciplineValidator();
+
+    const createDisciplineUseCase = new CreateDisciplineUseCase(
+        disciplineRepo,
+        memberRepo,
+        disciplineValidator,
+    );
+    const getDisciplinesUseCase = new GetDisciplinesUseCase(disciplineRepo);
+
+    const disciplineController = new DisciplineController(
+        createDisciplineUseCase,
+        getDisciplinesUseCase,
+    );
+
+    server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
+    server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
+
+    // Deportes
     const sportRepo = new PostgresSportRepository();
-    const sportValidator = new SportValidator(sportRepo); 
+    const sportValidator = new SportValidator(sportRepo);
     const createSportUseCase = new CreateSportUseCase(sportRepo, sportValidator);
     const getSportsUseCase = new GetSportsUseCase(sportRepo);
 
@@ -84,6 +111,7 @@ export function buildApp() {
     );
 
     //RUTA DE MIEMBROS
+    // RUTA DE MIEMBROS
     server.get('/api/v1/socios', memberController.getAll.bind(memberController));
     server.post('/api/v1/socios', memberController.create.bind(memberController));
     server.put('/api/v1/socios/:id', memberController.update.bind(memberController));

@@ -33,6 +33,34 @@ export interface UpdateMemberRequest {
 }
 
 // ==========================================
+// Discipline
+// ==========================================
+
+export interface DisciplineDTO {
+  id: string;
+  reason: string;
+  start_date: string; // ISO 8601
+  end_date: string;   // ISO 8601
+  is_total_suspension: boolean;
+  member_id: string;
+  created_at: string;
+}
+
+export interface CreateDisciplineRequest {
+  reason: string;
+  start_date: string;
+  end_date: string;
+  is_total_suspension: boolean;
+  member_id: string;
+}
+
+export interface UpdateDisciplineRequest {
+  reason?: string;
+  start_date?: string;
+  end_date?: string;
+  is_total_suspension?: boolean;
+}
+
 // Sport
 // ==========================================
 
@@ -72,4 +100,11 @@ export interface CreateEquipmentLoanRequest {
   item_name: string;
   due_date: string; // ISO Date String
   member_id: string;
+}
+export interface UpdateSportRequest {
+  name?: string;
+  description?: string;
+  max_capacity?: number;
+  additional_price?: number;
+  requires_medical_certificate?: boolean;
 }
