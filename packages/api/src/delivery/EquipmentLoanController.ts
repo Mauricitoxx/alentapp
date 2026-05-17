@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { CreateEquipmentLoanUseCase } from '../application/NewEquipmentLoanUseCase.js';
 import { GetEquipmentLoansUseCase } from '../application/GetEquipmentLoansUseCase.js';
 import { UpdateEquipmentLoanUseCase } from '../application/UpdateEquipmentLoanUseCase.js';
+import { DeleteEquipmentLoanUseCase } from '../application/DeleteEquipmentLoanUseCase.js';
 import { CreateEquipmentLoanRequest, UpdateEquipmentLoanRequest } from '@alentapp/shared';
 
 export class EquipmentLoanController {
@@ -9,6 +10,7 @@ export class EquipmentLoanController {
         private readonly createEquipmentLoanUseCase: CreateEquipmentLoanUseCase,
         private readonly getEquipmentLoansUseCase: GetEquipmentLoansUseCase,
         private readonly updateEquipmentLoanUseCase: UpdateEquipmentLoanUseCase,
+        private readonly deleteEquipmentLoanUseCase: DeleteEquipmentLoanUseCase,
     ) {}
 
     // Obtiene lista de préstamos registrados
@@ -63,6 +65,27 @@ export class EquipmentLoanController {
             }
             if (error.message === 'Fecha de devolucion invalida' || error.message.includes('posterior a la fecha actual')) {
                 return reply.status(409).send({ error: 'Fecha de devolucion invalida' });
+            }
+
+            return reply.status(500).send({ error: "Error interno, reintente más tarde" });
+        }
+    }
+
+    // Procesa la eliminación de un préstamo existente (TDD-0021)
+    async delete(
+        request: FastifyRequest<{ Params: { id: string } }>,
+        reply: FastifyReply,
+    ) {
+        try {
+            const { id } = request.params;
+            await this.deleteEquipmentLoanUseCase.execute(id);
+            return reply.status(204).send();
+        } catch (error: any) {
+            if (error.message === 'El préstamo no existe') {
+                return reply.status(404).send({ error: error.message });
+            }
+            if (error.message === 'No se puede eliminar un préstamo con historial de devolución') {
+                return reply.status(400).send({ error: error.message });
             }
 
             return reply.status(500).send({ error: "Error interno, reintente más tarde" });
