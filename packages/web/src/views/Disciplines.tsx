@@ -1,7 +1,7 @@
 import {
   Table, Button, Heading, HStack, Stack, Text, Box, Flex, Spinner, Center, Input, IconButton,
 } from '@chakra-ui/react';
-import { LuPlus, LuRefreshCw, LuPencil } from 'react-icons/lu';
+import { LuPlus, LuRefreshCw, LuPencil, LuTrash2 } from 'react-icons/lu';
 import { useEffect, useState } from 'react';
 import { disciplinesService } from '../services/disciplines';
 import { membersService } from '../services/members';
@@ -106,6 +106,20 @@ export function DisciplinesView() {
       alert(err.message || 'Error al guardar la sanción');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (d: DisciplineDTO) => {
+    const memberName = memberNameById(d.member_id);
+    const ok = window.confirm(
+      `¿Eliminar la sanción de ${memberName} por "${d.reason}"? Esta acción no se puede deshacer.`,
+    );
+    if (!ok) return;
+    try {
+      await disciplinesService.delete(d.id);
+      fetchAll();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar la sanción');
     }
   };
 
@@ -237,6 +251,9 @@ export function DisciplinesView() {
                       <HStack gap="2" justify="flex-end">
                         <IconButton variant="ghost" size="sm" aria-label="Editar sanción" onClick={() => openEditModal(d)}>
                           <LuPencil />
+                        </IconButton>
+                        <IconButton variant="ghost" size="sm" colorPalette="red" aria-label="Eliminar sanción" onClick={() => handleDelete(d)}>
+                          <LuTrash2 />
                         </IconButton>
                       </HStack>
                     </Table.Cell>

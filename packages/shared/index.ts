@@ -33,6 +33,23 @@ export interface UpdateMemberRequest {
 }
 
 // ==========================================
+// Locker 
+// ==========================================
+export type LockerStatus = 'Available' | 'Occupied' | 'Maintenance';
+
+export interface LockerDTO {
+  id: string; 
+  number: number;
+  location: string;
+  status: LockerStatus;
+  member_id: string | null;
+}
+
+export interface CreateLockerRequest {
+  number: number;
+  location: string;
+  status?: LockerStatus;
+}
 // Discipline
 // ==========================================
 
@@ -82,6 +99,25 @@ export interface CreateSportRequest {
   requires_medical_certificate: boolean;
 }
 
+// ==========================================
+// Equipment Loan
+// ==========================================
+export type EquipmentLoanStatus = 'Loaned' | 'Returned' | 'Damaged';
+
+export interface EquipmentLoanDTO {
+  id: string; // UUID
+  item_name: string;
+  status: EquipmentLoanStatus;
+  loan_date: string; // ISO Date String
+  due_date: string; // ISO Date String
+  member_id: string; // UUID
+}
+
+export interface CreateEquipmentLoanRequest {
+  item_name: string;
+  due_date: string; // ISO Date String
+  member_id: string;
+}
 export interface UpdateSportRequest {
   name?: string;
   description?: string;
