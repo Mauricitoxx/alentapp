@@ -2,6 +2,10 @@ export class EquipmentLoanValidator {
   
   validateDueDateIsFuture(dueDate: string | Date): void {
     const dueDateObj = new Date(dueDate);
+    if (isNaN(dueDateObj.getTime())) {
+      throw new Error('Fecha de devolucion invalida');
+    }
+
     const now = new Date();
     
     // Setear horas a 0 para comparar solo días (opcional, pero buena práctica para due_date)

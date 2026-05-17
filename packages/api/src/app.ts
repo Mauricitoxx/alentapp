@@ -22,6 +22,7 @@ import { DisciplineValidator } from './domain/services/DisciplineValidator.js';
 import { CreateDisciplineUseCase } from './application/CreateDisciplineUseCase.js';
 import { GetDisciplinesUseCase } from './application/GetDisciplinesUseCase.js';
 import { DisciplineController } from './delivery/DisciplineController.js';
+import { UpdateDisciplineUseCase } from './application/UpdateDisciplineUseCase.js';
 
 // Sport
 import { PostgresSportRepository } from './infrastructure/PostgresSportRepository.js';
@@ -35,6 +36,7 @@ import { PostgresEquipmentLoanRepository } from './infrastructure/PostgresEquipm
 import { EquipmentLoanValidator } from './domain/services/EquipmentLoanValidator.js';
 import { CreateEquipmentLoanUseCase } from './application/NewEquipmentLoanUseCase.js';
 import { GetEquipmentLoansUseCase } from './application/GetEquipmentLoansUseCase.js';
+import { UpdateEquipmentLoanUseCase } from './application/UpdateEquipmentLoanUseCase.js';
 import { EquipmentLoanController } from './delivery/EquipmentLoanController.js';
 
 export function buildApp() {
@@ -87,10 +89,12 @@ export function buildApp() {
         disciplineValidator,
     );
     const getDisciplinesUseCase = new GetDisciplinesUseCase(disciplineRepo);
+    const updateDisciplineUseCase = new UpdateDisciplineUseCase(disciplineRepo, disciplineValidator);
 
     const disciplineController = new DisciplineController(
         createDisciplineUseCase,
         getDisciplinesUseCase,
+        updateDisciplineUseCase,
     );
 
     // Deportes (Sports)
@@ -113,10 +117,12 @@ export function buildApp() {
         equipmentLoanValidator
     );
     const getEquipmentLoansUseCase = new GetEquipmentLoansUseCase(equipmentLoanRepo);
+    const updateEquipmentLoanUseCase = new UpdateEquipmentLoanUseCase(equipmentLoanRepo, equipmentLoanValidator);
 
     const equipmentLoanController = new EquipmentLoanController(
         createEquipmentLoanUseCase,
-        getEquipmentLoansUseCase
+        getEquipmentLoansUseCase,
+        updateEquipmentLoanUseCase
     );
 
     // Casilleros (Lockers)
@@ -136,10 +142,6 @@ export function buildApp() {
     server.put('/api/v1/socios/:id', memberController.update.bind(memberController));
     server.delete('/api/v1/socios/:id', memberController.delete.bind(memberController));
 
-    // Endpoints de Disciplinas
-    server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
-    server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
-
     // Endpoints de Deportes
     server.get('/api/v1/sports', sportController.getAll.bind(sportController));
     server.post('/api/v1/sports', sportController.create.bind(sportController));
@@ -147,6 +149,12 @@ export function buildApp() {
     // Endpoints de Equipment Loans
     server.get('/api/v1/equipment-loans', equipmentLoanController.getAll.bind(equipmentLoanController));
     server.post('/api/v1/equipment-loans', equipmentLoanController.create.bind(equipmentLoanController));
+    server.put('/api/v1/equipment-loans/:id', equipmentLoanController.update.bind(equipmentLoanController));
+
+    // Endpoints de Disciplinas
+    server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
+    server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
+    server.put('/api/v1/disciplines/:id', disciplineController.update.bind(disciplineController));
 
     // Endpoint de Casilleros: Alta
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));

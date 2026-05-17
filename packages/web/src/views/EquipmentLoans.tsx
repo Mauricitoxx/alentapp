@@ -11,7 +11,7 @@ import {
   Center,
   Input,
 } from "@chakra-ui/react";
-import { LuPlus, LuRefreshCw } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuPen } from "react-icons/lu";
 import { useEffect, useState } from "react";
 import { equipmentLoansService } from "../services/equipmentLoans"; 
 import { membersService } from "../services/members";
@@ -37,11 +37,13 @@ export function EquipmentLoansView() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<CreateEquipmentLoanRequest>({
+  const [formData, setFormData] = useState<any>({
     member_id: "",
     item_name: "",
     due_date: "", 
+    status: "Loaned",
   });
 
   const fetchLoans = async () => {
@@ -58,10 +60,24 @@ export function EquipmentLoansView() {
   };
 
   const openCreateModal = () => {
+    setEditingLoanId(null);
     setFormData({ 
       member_id: "", 
       item_name: "", 
       due_date: "", 
+      status: "Loaned",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const openEditModal = (loan: EquipmentLoanDTO) => {
+    setEditingLoanId(loan.id);
+    const formattedDate = new Date(loan.due_date).toISOString().slice(0, 16);
+    setFormData({
+      member_id: loan.member_id,
+      item_name: loan.item_name,
+      due_date: formattedDate,
+      status: loan.status,
     });
     setIsDialogOpen(true);
   };
@@ -72,11 +88,22 @@ export function EquipmentLoansView() {
     setIsSubmitting(true);
     try {
       const isoDate = new Date(formData.due_date).toISOString();
-      await equipmentLoansService.create({ ...formData, due_date: isoDate });
+      if (editingLoanId) {
+        await equipmentLoansService.update(editingLoanId, { 
+          status: formData.status, 
+          due_date: isoDate 
+        });
+      } else {
+        await equipmentLoansService.create({ 
+          member_id: formData.member_id,
+          item_name: formData.item_name,
+          due_date: isoDate 
+        });
+      }
       setIsDialogOpen(false);
       fetchLoans(); 
     } catch (err: any) {
-      alert(err.message || "Error al registrar el préstamo");
+      alert(err.message || "Error al procesar el préstamo");
     } finally {
       setIsSubmitting(false);
     }
@@ -119,16 +146,20 @@ export function EquipmentLoansView() {
         <DialogContent>
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>Registrar Nuevo Préstamo</DialogTitle>
+              <DialogTitle>{editingLoanId ? "Editar Préstamo" : "Registrar Nuevo Préstamo"}</DialogTitle>
             </DialogHeader>
             <DialogBody>
               <Stack gap="4">
                 <Field label="Socio" required>
-                  <MemberCombobox
-                    members={members}
-                    selectedId={formData.member_id}
-                    onSelect={(id) => setFormData({ ...formData, member_id: id })}
-                  />
+                  {editingLoanId ? (
+                    <Input value={formData.member_id.split('-')[0] + '...'} disabled />
+                  ) : (
+                    <MemberCombobox
+                      members={members}
+                      selectedId={formData.member_id}
+                      onSelect={(id) => setFormData({ ...formData, member_id: id })}
+                    />
+                  )}
                 </Field>
                 <Field label="Artículo prestado" required>
                   <Input 
@@ -136,6 +167,7 @@ export function EquipmentLoansView() {
                     value={formData.item_name}
                     onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
                     required
+                    disabled={!!editingLoanId}
                   />
                 </Field>
                 <Field label="Fecha de Devolución" required>
@@ -146,6 +178,26 @@ export function EquipmentLoansView() {
                     required
                   />
                 </Field>
+                {editingLoanId && (
+                  <Field label="Estado" required>
+                    <Box 
+                      as="select"
+                      w="full"
+                      p="2"
+                      borderRadius="md"
+                      borderWidth="1px"
+                      borderColor="border"
+                      bg="bg.panel"
+                      color="fg"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: (e.target as HTMLSelectElement).value })}
+                    >
+                      <Box as="option" value="Loaned" bg="bg.panel" color="fg">Prestado (Loaned)</Box>
+                      <Box as="option" value="Returned" bg="bg.panel" color="fg">Devuelto (Returned)</Box>
+                      <Box as="option" value="Damaged" bg="bg.panel" color="fg">Dañado (Damaged)</Box>
+                    </Box>
+                  </Field>
+                )}
               </Stack>
             </DialogBody>
             <DialogFooter>
@@ -153,7 +205,7 @@ export function EquipmentLoansView() {
                 <Button variant="outline">Cancelar</Button>
               </DialogActionTrigger>
               <Button type="submit" colorPalette="blue" loading={isSubmitting}>
-                Crear Préstamo
+                {editingLoanId ? "Guardar Cambios" : "Crear Préstamo"}
               </Button>
             </DialogFooter>
             <DialogCloseTrigger />
@@ -178,6 +230,7 @@ export function EquipmentLoansView() {
                   <Table.ColumnHeader py="4">Estado</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Fecha de Préstamo</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Fecha de Devolución</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4" textAlign="right">Acciones</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -194,6 +247,11 @@ export function EquipmentLoansView() {
                     </Table.Cell>
                     <Table.Cell>{new Date(loan.loan_date).toLocaleDateString()}</Table.Cell>
                     <Table.Cell>{new Date(loan.due_date).toLocaleDateString()}</Table.Cell>
+                    <Table.Cell textAlign="right">
+                      <Button size="sm" variant="ghost" colorPalette="blue" onClick={() => openEditModal(loan)}>
+                        <LuPen />
+                      </Button>
+                    </Table.Cell>
                   </Table.Row>
                 ))}
               </Table.Body>

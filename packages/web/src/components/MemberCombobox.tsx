@@ -135,7 +135,7 @@ export function MemberCombobox({
         >
           {filtered.length === 0 ? (
             <Box px="3" py="3">
-              <Text color="fg.muted" fontSize="sm">Sin coincidencias</Text>
+              <Text color="fg.muted" fontSize="sm">Miembro no encontrado. Verifique que el miembro se encuentre registrado</Text>
             </Box>
           ) : (
             <VStack gap="0" align="stretch">

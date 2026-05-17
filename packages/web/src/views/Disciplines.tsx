@@ -1,17 +1,25 @@
 import {
-  Table, Button, Heading, HStack, Stack, Text, Box, Flex, Spinner, Center, Input,
+  Table, Button, Heading, HStack, Stack, Text, Box, Flex, Spinner, Center, Input, IconButton,
 } from '@chakra-ui/react';
-import { LuPlus, LuRefreshCw } from 'react-icons/lu';
+import { LuPlus, LuRefreshCw, LuPencil } from 'react-icons/lu';
 import { useEffect, useState } from 'react';
 import { disciplinesService } from '../services/disciplines';
 import { membersService } from '../services/members';
-import type { DisciplineDTO, CreateDisciplineRequest, MemberDTO } from '@alentapp/shared';
+import type {
+  DisciplineDTO, CreateDisciplineRequest, UpdateDisciplineRequest, MemberDTO,
+} from '@alentapp/shared';
 import {
   DialogRoot, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter,
   DialogActionTrigger, DialogCloseTrigger,
 } from '../components/ui/dialog';
 import { Field } from '../components/ui/field';
 import { MemberCombobox } from '../components/MemberCombobox';
+
+function isoToDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export function DisciplinesView() {
   const [disciplines, setDisciplines] = useState<DisciplineDTO[]>([]);
@@ -20,13 +28,11 @@ export function DisciplinesView() {
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CreateDisciplineRequest>({
-    reason: '',
-    start_date: '',
-    end_date: '',
-    is_total_suspension: false,
-    member_id: '',
+    reason: '', start_date: '', end_date: '',
+    is_total_suspension: false, member_id: '',
   });
 
   const fetchAll = async () => {
@@ -46,17 +52,28 @@ export function DisciplinesView() {
     }
   };
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
 
   const memberNameById = (id: string) =>
     members.find((m) => m.id === id)?.name || id;
 
   const openCreateModal = () => {
+    setEditingId(null);
     setFormData({
       reason: '', start_date: '', end_date: '',
       is_total_suspension: false, member_id: '',
+    });
+    setIsDialogOpen(true);
+  };
+
+  const openEditModal = (d: DisciplineDTO) => {
+    setEditingId(d.id);
+    setFormData({
+      reason: d.reason,
+      start_date: isoToDatetimeLocal(d.start_date),
+      end_date: isoToDatetimeLocal(d.end_date),
+      is_total_suspension: d.is_total_suspension,
+      member_id: d.member_id,
     });
     setIsDialogOpen(true);
   };
@@ -65,12 +82,24 @@ export function DisciplinesView() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const payload: CreateDisciplineRequest = {
-        ...formData,
-        start_date: new Date(formData.start_date).toISOString(),
-        end_date: new Date(formData.end_date).toISOString(),
-      };
-      await disciplinesService.create(payload);
+      const startIso = new Date(formData.start_date).toISOString();
+      const endIso = new Date(formData.end_date).toISOString();
+
+      if (editingId) {
+        const updateData: UpdateDisciplineRequest = {
+          reason: formData.reason,
+          start_date: startIso,
+          end_date: endIso,
+          is_total_suspension: formData.is_total_suspension,
+        };
+        await disciplinesService.update(editingId, updateData);
+      } else {
+        const createData: CreateDisciplineRequest = {
+          ...formData, start_date: startIso, end_date: endIso,
+        };
+        await disciplinesService.create(createData);
+      }
+
       setIsDialogOpen(false);
       fetchAll();
     } catch (err: any) {
@@ -86,9 +115,7 @@ export function DisciplinesView() {
         <Flex justify="space-between" align="center">
           <Stack gap="1">
             <Heading size="2xl" fontWeight="bold">Tribunal de Disciplina</Heading>
-            <Text color="fg.muted" fontSize="md">
-              Gestiona las sanciones aplicadas a los miembros.
-            </Text>
+            <Text color="fg.muted" fontSize="md">Gestiona las sanciones aplicadas a los socios.</Text>
           </Stack>
           <HStack gap="3">
             <Button variant="outline" onClick={fetchAll} disabled={isLoading}>
@@ -103,15 +130,17 @@ export function DisciplinesView() {
         <DialogContent>
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>Registrar Nueva Sanción</DialogTitle>
+              <DialogTitle>{editingId ? 'Editar Sanción' : 'Registrar Nueva Sanción'}</DialogTitle>
             </DialogHeader>
             <DialogBody>
               <Stack gap="4">
-                <Field label="Miembro" required>
+                <Field label="Socio" required>
                   <MemberCombobox
+                    key={editingId ?? 'create'}
                     members={members}
                     selectedId={formData.member_id}
                     onSelect={(id) => setFormData({ ...formData, member_id: id })}
+                    disabled={!!editingId}
                   />
                 </Field>
                 <Field label="Motivo" required>
@@ -147,7 +176,7 @@ export function DisciplinesView() {
                       onChange={(e) => setFormData({ ...formData, is_total_suspension: e.target.checked })}
                     />
                     <label htmlFor="is_total_suspension">
-                      Suspensión total (restringe acceso del miembro)
+                      Suspensión total (restringe acceso del socio)
                     </label>
                   </HStack>
                 </Field>
@@ -158,7 +187,7 @@ export function DisciplinesView() {
                 <Button variant="outline">Cancelar</Button>
               </DialogActionTrigger>
               <Button type="submit" colorPalette="blue" loading={isSubmitting}>
-                Crear Sanción
+                {editingId ? 'Guardar Cambios' : 'Crear Sanción'}
               </Button>
             </DialogFooter>
             <DialogCloseTrigger />
@@ -188,11 +217,12 @@ export function DisciplinesView() {
             <Table.Root size="md" variant="line" interactive>
               <Table.Header>
                 <Table.Row bg="bg.muted/50">
-                  <Table.ColumnHeader py="4">Miembro</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4">Socio</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Motivo</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Inicio</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Fin</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Suspensión total</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4" textAlign="end">Acciones</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -203,6 +233,13 @@ export function DisciplinesView() {
                     <Table.Cell color="fg.muted">{new Date(d.start_date).toLocaleString()}</Table.Cell>
                     <Table.Cell color="fg.muted">{new Date(d.end_date).toLocaleString()}</Table.Cell>
                     <Table.Cell>{d.is_total_suspension ? 'Sí' : 'No'}</Table.Cell>
+                    <Table.Cell textAlign="end">
+                      <HStack gap="2" justify="flex-end">
+                        <IconButton variant="ghost" size="sm" aria-label="Editar sanción" onClick={() => openEditModal(d)}>
+                          <LuPencil />
+                        </IconButton>
+                      </HStack>
+                    </Table.Cell>
                   </Table.Row>
                 ))}
               </Table.Body>
