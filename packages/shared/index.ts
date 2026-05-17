@@ -53,3 +53,23 @@ export interface CreateSportRequest {
   additional_price: number;
   requires_medical_certificate: boolean;
 }
+
+// ==========================================
+// Equipment Loan
+// ==========================================
+export type EquipmentLoanStatus = 'Loaned' | 'Returned' | 'Damaged';
+
+export interface EquipmentLoanDTO {
+  id: string; // UUID
+  item_name: string;
+  status: EquipmentLoanStatus;
+  loan_date: string; // ISO Date String
+  due_date: string; // ISO Date String
+  member_id: string; // UUID
+}
+
+export interface CreateEquipmentLoanRequest {
+  item_name: string;
+  due_date: string; // ISO Date String
+  member_id: string;
+}
