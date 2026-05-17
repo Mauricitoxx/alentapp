@@ -1,12 +1,14 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { CreateEquipmentLoanUseCase } from '../application/NewEquipmentLoanUseCase.js';
 import { GetEquipmentLoansUseCase } from '../application/GetEquipmentLoansUseCase.js';
-import { CreateEquipmentLoanRequest } from '@alentapp/shared';
+import { UpdateEquipmentLoanUseCase } from '../application/UpdateEquipmentLoanUseCase.js';
+import { CreateEquipmentLoanRequest, UpdateEquipmentLoanRequest } from '@alentapp/shared';
 
 export class EquipmentLoanController {
     constructor(
         private readonly createEquipmentLoanUseCase: CreateEquipmentLoanUseCase,
         private readonly getEquipmentLoansUseCase: GetEquipmentLoansUseCase,
+        private readonly updateEquipmentLoanUseCase: UpdateEquipmentLoanUseCase,
     ) {}
 
     // Obtiene lista de préstamos registrados
@@ -40,6 +42,30 @@ export class EquipmentLoanController {
             }
 
             return reply.status(500).send({ error: "Error al crear el préstamo" });
+        }
+    }
+
+    // Procesa la actualización de un préstamo existente (TDD-0020)
+    async update(
+        request: FastifyRequest<{ Params: { id: string }, Body: UpdateEquipmentLoanRequest }>,
+        reply: FastifyReply,
+    ) {
+        try {
+            const { id } = request.params;
+            const prestamoActualizado = await this.updateEquipmentLoanUseCase.execute(id, request.body);
+            return reply.status(200).send({ data: prestamoActualizado, message: "Prestamo actualizado correctamente" });
+        } catch (error: any) {
+            if (error.message === 'El prestamo no existe') {
+                return reply.status(404).send({ error: error.message });
+            }
+            if (error.message === 'Estado de prestamo invalido') {
+                return reply.status(400).send({ error: error.message });
+            }
+            if (error.message === 'Fecha de devolucion invalida') {
+                return reply.status(409).send({ error: error.message });
+            }
+
+            return reply.status(500).send({ error: "Error interno, reintente más tarde" });
         }
     }
 }
