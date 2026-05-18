@@ -16,4 +16,7 @@ export interface SportRepository {
 
   //Acutualizaar un deporte existente
   update(id: string, data: UpdateSportRequest): Promise<SportDTO>;
+
+  //Elimina un deporte por su id
+  delete(id: string): Promise<void>;
 }

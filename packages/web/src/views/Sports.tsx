@@ -12,7 +12,7 @@ import {
   Input,
   IconButton,
 } from "@chakra-ui/react";
-import { LuPlus, LuRefreshCw, LuPencil } from "react-icons/lu";
+import { LuPlus, LuRefreshCw, LuPencil, LuTrash2 } from "react-icons/lu";
 import { useEffect, useState } from "react";
 import { sportsService } from "../services/sports"; 
 import type { SportDTO, CreateSportRequest, UpdateSportRequest } from "@alentapp/shared";
@@ -83,6 +83,17 @@ export function SportsView() {
       requires_medical_certificate: sport.requires_medical_certificate,
     });
     setIsDialogOpen(true);
+  };
+
+  const handleDeleteSport = async (id: string, name: string) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar el deporte "${name}"? Esta acción no se puede deshacer.`)) {
+      try {
+        await sportsService.delete(id);
+        fetchSports(); 
+      } catch (err: any) {
+        alert(err.message || "Error al eliminar el deporte");
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -279,6 +290,15 @@ export function SportsView() {
                           onClick={() => openEditModal(sport)}
                         >
                           <LuPencil />
+                        </IconButton>
+                        <IconButton 
+                          variant="ghost" 
+                          size="sm" 
+                          colorPalette="red" 
+                          aria-label="Eliminar deporte"
+                          onClick={() => handleDeleteSport(sport.id, sport.name)}
+                        >
+                          <LuTrash2 />
                         </IconButton>
                       </HStack>
                     </Table.Cell>
