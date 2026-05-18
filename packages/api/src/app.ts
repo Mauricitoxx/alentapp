@@ -15,6 +15,7 @@ import { PostgresLockerRepository } from './infrastructure/PostgresLockerReposit
 import { LockerValidator } from './domain/services/LockerValidator.js';
 import { NewLockerUseCase } from './application/NewLockerUseCase.js';
 import { GetLockersUseCase } from './application/GetLockersUseCase.js'; 
+import { UpdateLockerUseCase } from './application/UpdateLockerUseCase.js'; // 🌟 AGREGADO
 import { LockerController } from './delivery/LockerController.js';
 
 // Discipline
@@ -138,8 +139,10 @@ export function buildApp() {
     
     const newLockerUseCase = new NewLockerUseCase(lockerRepo, lockerValidator);
     const getLockersUseCase = new GetLockersUseCase(lockerRepo); 
+    const updateLockerUseCase = new UpdateLockerUseCase(lockerRepo, lockerValidator); // 🌟 AGREGADO
     
-    const lockerController = new LockerController(newLockerUseCase, getLockersUseCase);
+    // Pasamos el tercer caso de uso al controlador
+    const lockerController = new LockerController(newLockerUseCase, getLockersUseCase, updateLockerUseCase);
 
     // ----------------------------------------------------------------
     // 2. REGISTRO DE RUTAS EN EL SERVIDOR
@@ -170,6 +173,7 @@ export function buildApp() {
     // Endpoints de Casilleros
     server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController)); 
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
+    server.put('/api/v1/lockers/:id', lockerController.update.bind(lockerController)); // 🌟 AGREGADO
 
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
