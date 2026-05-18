@@ -16,6 +16,7 @@ import { LockerValidator } from './domain/services/LockerValidator.js';
 import { NewLockerUseCase } from './application/NewLockerUseCase.js';
 import { GetLockersUseCase } from './application/GetLockersUseCase.js'; 
 import { UpdateLockerUseCase } from './application/UpdateLockerUseCase.js'; // 🌟 AGREGADO
+import { DeleteLockerUseCase } from './application/DeleteLockerUseCase.js';
 import { LockerController } from './delivery/LockerController.js';
 
 // Discipline
@@ -146,9 +147,10 @@ export function buildApp() {
     const newLockerUseCase = new NewLockerUseCase(lockerRepo, lockerValidator);
     const getLockersUseCase = new GetLockersUseCase(lockerRepo); 
     const updateLockerUseCase = new UpdateLockerUseCase(lockerRepo, lockerValidator); // 🌟 AGREGADO
+    const deleteLockerUseCase = new DeleteLockerUseCase(lockerRepo);
     
-    // Pasamos el tercer caso de uso al controlador
-    const lockerController = new LockerController(newLockerUseCase, getLockersUseCase, updateLockerUseCase);
+    // Pasamos los casos de uso al controlador
+    const lockerController = new LockerController(newLockerUseCase, getLockersUseCase, updateLockerUseCase, deleteLockerUseCase);
 
     // ----------------------------------------------------------------
     // 2. REGISTRO DE RUTAS EN EL SERVIDOR
@@ -182,6 +184,7 @@ export function buildApp() {
     server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController)); 
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
     server.put('/api/v1/lockers/:id', lockerController.update.bind(lockerController)); // 🌟 AGREGADO
+    server.delete('/api/v1/lockers/:id', lockerController.delete.bind(lockerController));
 
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
