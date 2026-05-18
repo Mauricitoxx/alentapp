@@ -65,9 +65,6 @@ export const lockersService = {
   async delete(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/lockers/${id}`, {
       method: 'DELETE',
-      headers: {
-        "Content-Type": "application/json",
-      },
     });
 
     if (!response.ok) {
