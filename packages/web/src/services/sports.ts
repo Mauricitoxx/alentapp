@@ -1,4 +1,4 @@
-import type { SportDTO, CreateSportRequest } from '@alentapp/shared';
+import type { SportDTO, CreateSportRequest, UpdateSportRequest } from '@alentapp/shared';
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000') + '/api/v1';
 
 export const sportsService = {
@@ -35,4 +35,41 @@ export const sportsService = {
     const result = await response.json();
     return result.data;
   },
+
+  //se actualiza un deporte existente
+  async update(id: string, data: UpdateSportRequest): Promise<SportDTO> {
+    // Concatenamos el ID en la URL de manera dinámica
+    const response = await fetch(`${API_URL}/sports/${id}`, {
+      method: 'PUT', // Coincide con la ruta del servidor Fastify
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data), // Enviamos sólo los campos modificados (description y max_capacity)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al actualizar el deporte');
+    }
+
+    const result = await response.json();
+    return result.data; // Retorna el SportDTO con los datos actualizados
+  },
+
+  // Elimina un deporte por su ID
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/sports/${id}`, {
+      method: 'DELETE', 
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      // Captura el error 404 (si no existe) o 500 (si tiene restricciones de clave foránea)
+      throw new Error(errorData.error || 'Error al intentar eliminar el deporte');
+    }
+    
+    // Al ser una respuesta 204 (No Content), no hacemos response.json() 
+    // ya que el cuerpo viene vacío y rompería el flujo.
+  },
+
 };

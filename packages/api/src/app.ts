@@ -33,6 +33,8 @@ import { CreateSportUseCase } from './application/NewSportUseCase.js';
 import { GetSportsUseCase } from './application/GetSportsUseCase.js';
 import { SportController } from './delivery/SportController.js';
 import { SportValidator } from './domain/services/SportValidator.js';
+import { UpdateSportUseCase } from './application/UpdateSportUseCase.js';
+import { DeleteSportUseCase } from './application/DeleteSportUseCase.js';
 
 // Importaciones Equipment Loan
 import { PostgresEquipmentLoanRepository } from './infrastructure/PostgresEquipmentLoanRepository.js';
@@ -108,10 +110,14 @@ export function buildApp() {
     const sportValidator = new SportValidator(sportRepo);
     const createSportUseCase = new CreateSportUseCase(sportRepo, sportValidator);
     const getSportsUseCase = new GetSportsUseCase(sportRepo);
+    const updateSportUseCase = new UpdateSportUseCase(sportRepo, sportValidator);
+    const deleteSportUseCase = new DeleteSportUseCase(sportRepo);
 
     const sportController = new SportController(
         createSportUseCase,
-        getSportsUseCase
+        getSportsUseCase,
+        updateSportUseCase,
+        deleteSportUseCase
     );
 
     // Equipment Loans (Préstamos)
@@ -157,6 +163,8 @@ export function buildApp() {
     // Endpoints de Deportes
     server.get('/api/v1/sports', sportController.getAll.bind(sportController));
     server.post('/api/v1/sports', sportController.create.bind(sportController));
+    server.put('/api/v1/sports/:id', sportController.update.bind(sportController));
+    server.delete('/api/v1/sports/:id', sportController.delete.bind(sportController));
 
     // Endpoints de Equipment Loans
     server.get('/api/v1/equipment-loans', equipmentLoanController.getAll.bind(equipmentLoanController));
