@@ -14,6 +14,7 @@ import { MemberController } from './delivery/MemberController.js';
 import { PostgresLockerRepository } from './infrastructure/PostgresLockerRepository.js';
 import { LockerValidator } from './domain/services/LockerValidator.js';
 import { NewLockerUseCase } from './application/NewLockerUseCase.js';
+import { GetLockersUseCase } from './application/GetLockersUseCase.js'; 
 import { LockerController } from './delivery/LockerController.js';
 
 // Discipline
@@ -134,9 +135,11 @@ export function buildApp() {
     // Casilleros (Lockers)
     const lockerRepo = new PostgresLockerRepository();
     const lockerValidator = new LockerValidator(lockerRepo);
-    const newLockerUseCase = new NewLockerUseCase(lockerRepo, lockerValidator);
     
-    const lockerController = new LockerController(newLockerUseCase);
+    const newLockerUseCase = new NewLockerUseCase(lockerRepo, lockerValidator);
+    const getLockersUseCase = new GetLockersUseCase(lockerRepo); 
+    
+    const lockerController = new LockerController(newLockerUseCase, getLockersUseCase);
 
     // ----------------------------------------------------------------
     // 2. REGISTRO DE RUTAS EN EL SERVIDOR
@@ -158,13 +161,14 @@ export function buildApp() {
     server.put('/api/v1/equipment-loans/:id', equipmentLoanController.update.bind(equipmentLoanController));
     server.delete('/api/v1/equipment-loans/:id', equipmentLoanController.delete.bind(equipmentLoanController))
 
-    // Endpoints de Disciplinas
+    // Endpoints de Disciplinas (SÓLO QUEDAN ESTAS)
     server.get('/api/v1/disciplines', disciplineController.getAll.bind(disciplineController));
     server.post('/api/v1/disciplines', disciplineController.create.bind(disciplineController));
     server.put('/api/v1/disciplines/:id', disciplineController.update.bind(disciplineController));
     server.delete('/api/v1/disciplines/:id', disciplineController.delete.bind(disciplineController));
 
-    // Endpoint de Casilleros: Alta
+    // Endpoints de Casilleros
+    server.get('/api/v1/lockers', lockerController.getAll.bind(lockerController)); 
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
 
     server.get('/', async (req, rep) => {
@@ -174,7 +178,6 @@ export function buildApp() {
     return server;
 }
 
-// Solo iniciar el servidor si el script se ejecuta directamente
 if (process.argv[1] && process.argv[1].endsWith('app.ts')) {
     const server = buildApp();
     const port = parseInt(process.env.PORT || '3000', 10);

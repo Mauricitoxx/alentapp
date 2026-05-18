@@ -1,10 +1,12 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { NewLockerUseCase } from '../application/NewLockerUseCase.js';
+import { GetLockersUseCase } from '../application/GetLockersUseCase.js'; // 
 import { CreateLockerRequest } from '@alentapp/shared';
 
 export class LockerController {
     constructor(
-        private readonly newLockerUseCase: NewLockerUseCase
+        private readonly newLockerUseCase: NewLockerUseCase,
+        private readonly getLockersUseCase: GetLockersUseCase //
     ) {}
 
     /**
@@ -16,11 +18,10 @@ export class LockerController {
         reply: FastifyReply,
     ) {
         try {
-            // 1. Ejecutamos la lógica de negocio a través de tu caso de uso
+           
             const locker = await this.newLockerUseCase.execute(request.body);
             
-            // 2. Filtro estricto: Extraemos el member_id para ignorarlo
-            // El resto de los campos (id, number, location, status) quedan en 'lockerParaAlberto'
+         
             const { member_id, ...lockerParaAlberto } = locker;
             
             // 3. 201 Created: El casillero se creó con éxito y cumple con tu contrato técnico
@@ -45,6 +46,33 @@ export class LockerController {
 
             // 500 Internal Server Error: Errores de infraestructura (Postgres o Docker caídos)
             return reply.status(500).send({ error: "Error interno, reintente más tarde" });
+        }
+    }
+
+    
+    async getAll(
+        _request: FastifyRequest,
+        reply: FastifyReply,
+    ) {
+        try {
+        
+            const lockers = await this.getLockersUseCase.execute();
+            
+            const lockersParaAlberto = lockers.map(locker => {
+                const { member_id, ...resto } = locker;
+                return resto;
+            });
+            
+           
+            return reply.status(200).send({ data: lockersParaAlberto });
+        } catch (error: any) {
+            
+            console.error("Error real capturado:", error);
+            
+            return reply.status(500).send({ 
+                error: error.message || "Error interno al obtener los casilleros",
+                details: error.toString()
+            });
         }
     }
 }

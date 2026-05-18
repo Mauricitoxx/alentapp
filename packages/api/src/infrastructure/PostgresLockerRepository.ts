@@ -23,9 +23,7 @@ type DBLocker = {
 
 export class PostgresLockerRepository implements LockerRepository {
     
-    /**
-     * Inserta el nuevo casillero en la base de datos física
-     */
+ 
     async create(data: Omit<LockerDTO, 'id'>): Promise<LockerDTO> {
         const locker = await prisma.locker.create({
             data: {
@@ -39,9 +37,7 @@ export class PostgresLockerRepository implements LockerRepository {
         return this.mapToDTO(locker);
     }
 
-    /**
-     * Busca un casillero por su número único (Usado por el Validador de Dominio)
-     */
+  
     async findByNumber(number: number): Promise<LockerDTO | null> {
         const locker = await prisma.locker.findUnique({
             where: { number },
@@ -61,9 +57,7 @@ export class PostgresLockerRepository implements LockerRepository {
         return locker ? this.mapToDTO(locker) : null;
     }
 
-    /**
-     * Actualiza los datos parciales de un casillero (TDD-011)
-     */
+   
     async update(id: string, data: Partial<LockerDTO>): Promise<LockerDTO> {
         const locker = await prisma.locker.update({
             where: { id },
@@ -79,10 +73,18 @@ export class PostgresLockerRepository implements LockerRepository {
         return this.mapToDTO(locker);
     }
 
-    /**
-     * Mapeador privado: Convierte el registro de la DB al DTO del dominio.
-     * Mantiene aislada la infraestructura del resto de la aplicación.
-     */
+   
+    async findAll(): Promise<LockerDTO[]> {
+        // Hace el equivalente a un SELECT * FROM locker ORDER BY number ASC
+        const lockers = await prisma.locker.findMany({
+            orderBy: { number: 'asc' },
+        });
+
+        // Recorremos el array que devuelve Prisma y transformamos cada uno al formato DTO
+        return lockers.map(locker => this.mapToDTO(locker));
+    }
+
+  
     private mapToDTO(locker: DBLocker): LockerDTO {
         return {
             id: locker.id,
