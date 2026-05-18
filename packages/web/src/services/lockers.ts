@@ -60,4 +60,16 @@ export const lockersService = {
     // Retorna el casillero actualizado que viene envuelto en result.data
     return result.data;
   },
+
+  // 🌟 NUEVO MÉTODO AGREGADO para la eliminación
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/lockers/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.error || 'Error al eliminar el casillero');
+    }
+  },
 };

@@ -2,13 +2,15 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { NewLockerUseCase } from '../application/NewLockerUseCase.js';
 import { GetLockersUseCase } from '../application/GetLockersUseCase.js'; 
 import { UpdateLockerUseCase } from '../application/UpdateLockerUseCase.js'; // 🌟 1. AGREGAMOS ESTE IMPORT
+import { DeleteLockerUseCase } from '../application/DeleteLockerUseCase.js';
 import { CreateLockerRequest, UpdateLockerRequest } from '@alentapp/shared'; // 🌟 2. SUMAMOS UpdateLockerRequest
 
 export class LockerController {
     constructor(
         private readonly newLockerUseCase: NewLockerUseCase,
         private readonly getLockersUseCase: GetLockersUseCase,
-        private readonly updateLockerUseCase: UpdateLockerUseCase // 🌟 3. INYECTAMOS EL USE CASE ACÁ
+        private readonly updateLockerUseCase: UpdateLockerUseCase, // 🌟 3. INYECTAMOS EL USE CASE ACÁ
+        private readonly deleteLockerUseCase: DeleteLockerUseCase
     ) {}
 
     /**
@@ -80,6 +82,30 @@ export class LockerController {
             const message = statusCode === 500 ? 'Error interno, reintente más tarde' : error.message;
             
             return reply.status(statusCode).send({ error: message });
+        }
+    }
+
+    async delete(
+        request: FastifyRequest<{ Params: { id: string } }>,
+        reply: FastifyReply,
+    ) {
+        const { id } = request.params;
+
+        try {
+            await this.deleteLockerUseCase.execute(id);
+            return reply.status(204).send({});
+        } catch (error: any) {
+            const message = error.message;
+
+            if (message?.includes('no existe')) {
+                return reply.status(404).send({ message });
+            }
+
+            if (message?.includes('ocupado')) {
+                return reply.status(400).send({ message });
+            }
+
+            return reply.status(500).send({ error: 'Error interno, reintente más tarde' });
         }
     }
 }
