@@ -1,5 +1,5 @@
 import { Box, SimpleGrid, Heading, Text, VStack } from "@chakra-ui/react";
-import { LuUsers, LuDumbbell, LuPackage, LuGavel } from "react-icons/lu";
+import { LuUsers, LuDumbbell, LuPackage, LuGavel, LuArchive } from "react-icons/lu";
 import { SectionCard } from "../components/SectionCard";
 
 export function HomeView() {
@@ -50,6 +50,14 @@ export function HomeView() {
           description="Consulta y registra los préstamos de equipos deportivos a los socios activos."
           to="/equipment-loans"
           icon={LuPackage}
+        />
+
+        {/* Módulo de Lockers integrado para la revisión de Mauro */}
+        <SectionCard 
+          title="Casilleros"
+          description="Gestiona la asignación de lockers del club, disponibilidad, ubicaciones y estados."
+          to="/lockers"
+          icon={LuArchive}
         />
 
         {/* Future sections can be added here following the same pattern */}
