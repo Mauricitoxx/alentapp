@@ -154,6 +154,7 @@ export function buildApp() {
     // Endpoints de Deportes
     server.get('/api/v1/sports', sportController.getAll.bind(sportController));
     server.post('/api/v1/sports', sportController.create.bind(sportController));
+    server.put('/api/v1/sports/:id', sportController.update.bind(sportController));
 
     // Endpoints de Equipment Loans
     server.get('/api/v1/equipment-loans', equipmentLoanController.getAll.bind(equipmentLoanController));
