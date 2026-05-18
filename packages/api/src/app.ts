@@ -174,7 +174,6 @@ export function buildApp() {
 
     // Endpoint de Casilleros: Alta
     server.post('/api/v1/lockers', lockerController.create.bind(lockerController));
-
     server.get('/', async (req, rep) => {
         rep.status(200).send({ msg: 'asd' })
     });
