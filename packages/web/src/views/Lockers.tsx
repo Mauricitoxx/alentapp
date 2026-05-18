@@ -8,7 +8,7 @@ import {
   Input,
   Table
 } from "@chakra-ui/react";
-import { LuCheck, LuPlus, LuRotateCw, LuPencil } from "react-icons/lu"; 
+import { LuCheck, LuPlus, LuRotateCw, LuPencil, LuTrash2 } from "react-icons/lu"; 
 import { useState, useEffect } from "react";
 import { lockersService } from "../services/lockers";
 import { membersService } from "../services/members"; 
@@ -43,6 +43,11 @@ export function LockersView() {
   const [editingLockerId, setEditingLockerId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState(false);
+  
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [lockerToDelete, setLockerToDelete] = useState<Locker | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   
   const [editFormData, setEditFormData] = useState({
     number: "",
@@ -101,6 +106,29 @@ export function LockersView() {
       member_id: locker.member_id || "" 
     });
     setIsEditOpen(true);
+  };
+
+  const openDeleteModal = (locker: Locker) => {
+    setDeleteError(null);
+    setLockerToDelete(locker);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!lockerToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await lockersService.delete(lockerToDelete.id);
+      setIsDeleteDialogOpen(false);
+      setLockerToDelete(null);
+      await fetchLockers();
+    } catch (err: any) {
+      setDeleteError(err.message || "Error al eliminar el casillero");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -402,6 +430,9 @@ export function LockersView() {
                           <Button size="sm" variant="ghost" onClick={() => openEditModal(locker)}>
                             <LuPencil /> Editar
                           </Button>
+                          <Button size="sm" variant="ghost" colorPalette="red" onClick={() => openDeleteModal(locker)}>
+                            <LuTrash2 /> Eliminar
+                          </Button>
                         </Table.Cell>
                       </Table.Row>
                     );
@@ -506,6 +537,36 @@ export function LockersView() {
             </DialogFooter>
             <DialogCloseTrigger />
           </form>
+        </DialogContent>
+      </DialogRoot>
+
+      {/* MODAL EMERGENTE PARA ELIMINAR */}
+      <DialogRoot open={isDeleteDialogOpen} onOpenChange={(e) => setIsDeleteDialogOpen(e.open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar Casillero</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {deleteError && (
+              <Box p="4" mb="4" bg="red.50" color="red.700" borderRadius="md" border="1px solid" borderColor="red.200">
+                <Text fontWeight="bold">Error en la operación:</Text>
+                <Text>{deleteError}</Text>
+              </Box>
+            )}
+            <Text>¿Estás seguro de que deseas eliminar el casillero <b>{lockerToDelete?.number}</b> de forma permanente?</Text>
+            <Text mt="2" fontSize="sm" color="fg.muted">
+              Esta acción no se puede deshacer.
+            </Text>
+          </DialogBody>
+          <DialogFooter>
+            <DialogActionTrigger asChild>
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancelar</Button>
+            </DialogActionTrigger>
+            <Button colorPalette="red" onClick={handleDelete} loading={isDeleting}>
+              <LuTrash2 style={{ marginRight: '8px' }} /> Confirmar Eliminación
+            </Button>
+          </DialogFooter>
+          <DialogCloseTrigger />
         </DialogContent>
       </DialogRoot>
     </>
