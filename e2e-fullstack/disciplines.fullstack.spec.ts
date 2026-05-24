@@ -67,3 +67,44 @@ test.describe('Disciplines Alta - Full-Stack E2E', () => {
     await expect(page.getByText('Vigentes')).toBeVisible();
   });
 });
+
+test.describe('Disciplines Update - Full-Stack E2E', () => {
+  const dni = '70020002';
+  const memberName = 'Socio Update E2E';
+
+  test('edita el motivo de una sanción y ve el cambio en la tabla', async ({ page }) => {
+    // 1. Sembrar socio vía API
+    const memberRes = await page.request.post(`${API}/socios`, {
+      data: { name: memberName, dni, email: `upd-${dni}@e2e.com`, birthdate: '1990-01-01', category: 'Pleno' },
+    });
+    const member = (await memberRes.json()).data;
+
+    // 2. Sembrar una sanción para ese socio vía API
+    await page.request.post(`${API}/disciplines`, {
+      data: {
+        reason: 'Motivo Original E2E',
+        start_date: '2030-01-01T00:00:00.000Z',
+        end_date: '2030-02-01T00:00:00.000Z',
+        is_total_suspension: false,
+        member_id: member.id,
+      },
+    });
+
+    // 3. Ir a la vista
+    await page.goto('/disciplines');
+    await expect(page.getByText('Motivo Original E2E')).toBeVisible({ timeout: 10000 });
+
+    // 4. Abrir el modal de edición (IconButton con aria-label "Editar sanción")
+    await page.getByRole('button', { name: 'Editar sanción' }).first().click();
+    await expect(page.getByText('Editar Sanción')).toBeVisible();
+
+    // 5. Cambiar el motivo y guardar
+    await page.getByPlaceholder('Ej. Conducta antideportiva').fill('Motivo Editado E2E');
+    await page.getByRole('button', { name: 'Guardar Cambios' }).click();
+    await expect(page.getByRole('button', { name: 'Guardar Cambios' })).toBeHidden();
+
+    // 6. Verificar el cambio (y que el viejo ya no está)
+    await expect(page.getByText('Motivo Editado E2E')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Motivo Original E2E')).toBeHidden();
+  });
+});
