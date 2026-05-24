@@ -24,7 +24,7 @@ describe('CreateSportUseCase', () => {
         vi.clearAllMocks(); //limpia los mocks antes de cada test para evitar interferencias
     });
 
-    //Test Unitario para el caso de uso de creacion de deporte
+    //Test Unitario para el caso de uso de creacion de deporte exitoso
     it ('debe crear un deporte exitosamente si pasa validaciones', async () => {
         const mockRequest: CreateSportRequest = { //datos de entrada para crear un deporte
             name: 'Futbol',
@@ -69,5 +69,52 @@ describe('CreateSportUseCase', () => {
         expect(result.id).toBe('uuid-sport-123');
         expect(result.name).toBe('Futbol');
     });
+
+    //Test Unitario para el caso de uso de creacion de deporte con error por nombre no unico
+    it('debe lanzar un error si el nombre del deporte no es unico', async () => {
+        const mockRequest: CreateSportRequest = {
+            name: 'Golf',
+            description: 'Deporte de campo',
+            max_capacity: 15,
+            additional_price: 1500,
+            requires_medical_certificate: false
+        };
+
+        //simulamos que el validador lanza error porque el nombre no es único
+        vi.mocked(mockSportValidator.validateNameIsUnique).mockRejectedValue(new Error('El nombre del deporte ya existe'));
+
+        //Ejecutamos esperando que lance el error
+        await expect(useCase.execute(mockRequest)).rejects.toThrow('El nombre del deporte ya existe');
+
+        //Verificamos que nunca se haya llamado al repositorio para guardar en la DB
+        expect(mockSportRepo.create).not.toHaveBeenCalled();
+    });
+
+    //Test Unitario para el caso de uso de creacion de deporte con error por capacidad maxima invalida
+    it('debe lanzar un error si la capacidad maxima es invalida', async () => {
+        const mockRequest: CreateSportRequest = {
+            name: 'Tenis',
+            description: 'Deporte de raqueta',
+            max_capacity: -5, //capacidad invalida
+            additional_price: 300,
+            requires_medical_certificate: false
+        };
+
+        //Simulamos que el nombre del deporte es unico para llegar a la validacion de capacidad
+        vi.mocked(mockSportValidator.validateNameIsUnique).mockResolvedValue(undefined);
+        
+        //Simulamos que el validador lanza error por capacidad maxima invalida
+        vi.mocked(mockSportValidator.validateMaxCapacity).mockImplementation(() => {
+            throw new Error('La capacidad máxima debe ser mayor a cero');
+        });
+
+        //Ejecutamos esperando que lance el error
+        await expect(useCase.execute(mockRequest)).rejects.toThrow('La capacidad máxima debe ser mayor a cero');
+
+
+        //Verificamos que nunca se haya llamado al repositorio para guardar en la DB
+        expect(mockSportRepo.create).not.toHaveBeenCalled();
+    });
+
 
 });
