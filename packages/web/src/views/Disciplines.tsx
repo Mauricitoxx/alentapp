@@ -63,14 +63,17 @@ export function DisciplinesView() {
       ]);
       setDisciplines(disc);
       setMembers(mem);
-    } catch (err: any) {
-      setError(err.message || 'Error al cargar los datos');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al cargar los datos');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    const run = async () => { await fetchAll(); };
+    void run();
+  }, []);
 
   const memberNameById = (id: string) =>
     members.find((m) => m.id === id)?.name || id;
@@ -132,8 +135,8 @@ export function DisciplinesView() {
 
       setIsDialogOpen(false);
       fetchAll();
-    } catch (err: any) {
-      alert(err.message || 'Error al guardar la sanción');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al guardar la sanción');
     } finally {
       setIsSubmitting(false);
     }
@@ -148,8 +151,8 @@ export function DisciplinesView() {
     try {
       await disciplinesService.delete(d.id);
       fetchAll();
-    } catch (err: any) {
-      alert(err.message || 'Error al eliminar la sanción');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al eliminar la sanción');
     }
   };
 
