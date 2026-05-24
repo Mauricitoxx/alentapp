@@ -108,3 +108,40 @@ test.describe('Disciplines Update - Full-Stack E2E', () => {
     await expect(page.getByText('Motivo Original E2E')).toBeHidden();
   });
 });
+
+test.describe('Disciplines Delete - Full-Stack E2E', () => {
+  const dni = '70030003';
+  const memberName = 'Socio Delete E2E';
+
+  test('elimina una sanción desde la UI y desaparece de la tabla', async ({ page }) => {
+    // 1. Sembrar socio
+    const memberRes = await page.request.post(`${API}/socios`, {
+      data: { name: memberName, dni, email: `del-${dni}@e2e.com`, birthdate: '1990-01-01', category: 'Pleno' },
+    });
+    const member = (await memberRes.json()).data;
+
+    // 2. Sembrar sanción
+    await page.request.post(`${API}/disciplines`, {
+      data: {
+        reason: 'Sancion A Borrar E2E',
+        start_date: '2030-01-01T00:00:00.000Z',
+        end_date: '2030-02-01T00:00:00.000Z',
+        is_total_suspension: false,
+        member_id: member.id,
+      },
+    });
+
+    // 3. Ir a la vista
+    await page.goto('/disciplines');
+    await expect(page.getByText('Sancion A Borrar E2E')).toBeVisible({ timeout: 10000 });
+
+    // 4. Aceptar automáticamente el window.confirm ANTES de clickear
+    page.on('dialog', (dialog) => dialog.accept());
+
+    // 5. Clic en eliminar (IconButton con aria-label "Eliminar sanción")
+    await page.getByRole('button', { name: 'Eliminar sanción' }).first().click();
+
+    // 6. Verificar que desaparece
+    await expect(page.getByText('Sancion A Borrar E2E')).toBeHidden({ timeout: 10000 });
+  });
+});
