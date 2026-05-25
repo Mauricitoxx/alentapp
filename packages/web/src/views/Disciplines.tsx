@@ -1,8 +1,8 @@
 import {
-  Table, Button, Heading, HStack, Stack, Text, Box, Flex, Spinner, Center, Input, IconButton,
+  Table, Button, Heading, HStack, Stack, Text, Box, Flex, Spinner, Center, Input, IconButton, Badge, SimpleGrid,
 } from '@chakra-ui/react';
-import { LuPlus, LuRefreshCw, LuPencil, LuTrash2 } from 'react-icons/lu';
-import { useEffect, useState } from 'react';
+import { LuPlus, LuRefreshCw, LuPencil, LuTrash2, LuX } from 'react-icons/lu';
+import { useEffect, useMemo, useState } from 'react';
 import { disciplinesService } from '../services/disciplines';
 import { membersService } from '../services/members';
 import type {
@@ -21,6 +21,21 @@ function isoToDatetimeLocal(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// --- Helpers del feature de historial ---
+type Vigencia = 'Vigente' | 'Cumplida' | 'Programada';
+
+function getVigencia(d: DisciplineDTO): Vigencia {
+  const now = new Date();
+  const start = new Date(d.start_date);
+  const end = new Date(d.end_date);
+  if (now < start) return 'Programada';
+  if (now > end) return 'Cumplida';
+  return 'Vigente';
+}
+
+const vigenciaColor = (v: Vigencia) =>
+  v === 'Vigente' ? 'green' : v === 'Cumplida' ? 'gray' : 'blue';
+
 export function DisciplinesView() {
   const [disciplines, setDisciplines] = useState<DisciplineDTO[]>([]);
   const [members, setMembers] = useState<MemberDTO[]>([]);
@@ -29,6 +44,9 @@ export function DisciplinesView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Feature de historial: id del socio por el que se filtra ('' = ver todas)
+  const [filterMemberId, setFilterMemberId] = useState<string>('');
 
   const [formData, setFormData] = useState<CreateDisciplineRequest>({
     reason: '', start_date: '', end_date: '',
@@ -45,24 +63,39 @@ export function DisciplinesView() {
       ]);
       setDisciplines(disc);
       setMembers(mem);
-    } catch (err: any) {
-      setError(err.message || 'Error al cargar los datos');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al cargar los datos');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    const run = async () => { await fetchAll(); };
+    void run();
+  }, []);
 
   const memberNameById = (id: string) =>
     members.find((m) => m.id === id)?.name || id;
 
+  // Lista visible según el filtro
+  const visibleDisciplines = useMemo(() => {
+    if (!filterMemberId) return disciplines;
+    return disciplines.filter((d) => d.member_id === filterMemberId);
+  }, [disciplines, filterMemberId]);
+
+  // Resumen del socio filtrado
+  const summary = useMemo(() => {
+    if (!filterMemberId) return null;
+    const list = disciplines.filter((d) => d.member_id === filterMemberId);
+    const vigentes = list.filter((d) => getVigencia(d) === 'Vigente');
+    const suspendido = vigentes.some((d) => d.is_total_suspension);
+    return { total: list.length, vigentes: vigentes.length, suspendido };
+  }, [disciplines, filterMemberId]);
+
   const openCreateModal = () => {
     setEditingId(null);
-    setFormData({
-      reason: '', start_date: '', end_date: '',
-      is_total_suspension: false, member_id: '',
-    });
+    setFormData({ reason: '', start_date: '', end_date: '', is_total_suspension: false, member_id: '' });
     setIsDialogOpen(true);
   };
 
@@ -102,8 +135,8 @@ export function DisciplinesView() {
 
       setIsDialogOpen(false);
       fetchAll();
-    } catch (err: any) {
-      alert(err.message || 'Error al guardar la sanción');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al guardar la sanción');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,8 +151,8 @@ export function DisciplinesView() {
     try {
       await disciplinesService.delete(d.id);
       fetchAll();
-    } catch (err: any) {
-      alert(err.message || 'Error al eliminar la sanción');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al eliminar la sanción');
     }
   };
 
@@ -215,6 +248,57 @@ export function DisciplinesView() {
           </Box>
         )}
 
+        {/* ===== Feature: Historial por socio ===== */}
+        <Box bg="bg.panel" borderRadius="xl" borderWidth="1px" p="5">
+          <Stack gap="4">
+            <Flex justify="space-between" align="center" wrap="wrap" gap="3">
+              <Stack gap="0">
+                <Heading size="md">Historial por socio</Heading>
+                <Text color="fg.muted" fontSize="sm">
+                  Buscá un socio para ver solo sus sanciones y su estado.
+                </Text>
+              </Stack>
+              {filterMemberId && (
+                <Button variant="outline" size="sm" onClick={() => setFilterMemberId('')}>
+                  <LuX /> Ver todas
+                </Button>
+              )}
+            </Flex>
+
+            <Box maxW="md">
+              <MemberCombobox
+                key={`filter-${filterMemberId}`}
+                members={members}
+                selectedId={filterMemberId}
+                onSelect={(id) => setFilterMemberId(id)}
+                placeholder="Filtrar: buscar socio por nombre o DNI..."
+              />
+            </Box>
+
+            {summary && (
+              <SimpleGrid columns={{ base: 1, sm: 3 }} gap="3">
+                <Box p="4" borderRadius="lg" bg="bg.muted/40" borderWidth="1px">
+                  <Text fontSize="xs" color="fg.muted" textTransform="uppercase">Sanciones totales</Text>
+                  <Text fontSize="2xl" fontWeight="bold">{summary.total}</Text>
+                </Box>
+                <Box p="4" borderRadius="lg" bg="bg.muted/40" borderWidth="1px">
+                  <Text fontSize="xs" color="fg.muted" textTransform="uppercase">Vigentes</Text>
+                  <Text fontSize="2xl" fontWeight="bold" color="green.500">{summary.vigentes}</Text>
+                </Box>
+                <Box p="4" borderRadius="lg" bg="bg.muted/40" borderWidth="1px">
+                  <Text fontSize="xs" color="fg.muted" textTransform="uppercase">Estado</Text>
+                  <Box mt="1">
+                    <Badge colorPalette={summary.suspendido ? 'red' : 'green'} size="lg">
+                      {summary.suspendido ? 'Suspendido' : 'Sin restricción activa'}
+                    </Badge>
+                  </Box>
+                </Box>
+              </SimpleGrid>
+            )}
+          </Stack>
+        </Box>
+
+        {/* ===== Tabla (ahora usa visibleDisciplines + columna Vigencia) ===== */}
         <Box bg="bg.panel" borderRadius="xl" boxShadow="sm" borderWidth="1px" overflow="hidden" minH="300px">
           {isLoading ? (
             <Center h="300px">
@@ -223,9 +307,13 @@ export function DisciplinesView() {
                 <Text color="fg.muted">Cargando sanciones...</Text>
               </Stack>
             </Center>
-          ) : disciplines.length === 0 ? (
+          ) : visibleDisciplines.length === 0 ? (
             <Center h="300px">
-              <Text color="fg.muted">No hay sanciones registradas.</Text>
+              <Text color="fg.muted">
+                {filterMemberId
+                  ? 'Este socio no tiene sanciones registradas.'
+                  : 'No hay sanciones registradas.'}
+              </Text>
             </Center>
           ) : (
             <Table.Root size="md" variant="line" interactive>
@@ -233,6 +321,7 @@ export function DisciplinesView() {
                 <Table.Row bg="bg.muted/50">
                   <Table.ColumnHeader py="4">Socio</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Motivo</Table.ColumnHeader>
+                  <Table.ColumnHeader py="4">Vigencia</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Inicio</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Fin</Table.ColumnHeader>
                   <Table.ColumnHeader py="4">Suspensión total</Table.ColumnHeader>
@@ -240,25 +329,31 @@ export function DisciplinesView() {
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {disciplines.map((d) => (
-                  <Table.Row key={d.id}>
-                    <Table.Cell fontWeight="semibold">{memberNameById(d.member_id)}</Table.Cell>
-                    <Table.Cell color="fg.muted">{d.reason}</Table.Cell>
-                    <Table.Cell color="fg.muted">{new Date(d.start_date).toLocaleString()}</Table.Cell>
-                    <Table.Cell color="fg.muted">{new Date(d.end_date).toLocaleString()}</Table.Cell>
-                    <Table.Cell>{d.is_total_suspension ? 'Sí' : 'No'}</Table.Cell>
-                    <Table.Cell textAlign="end">
-                      <HStack gap="2" justify="flex-end">
-                        <IconButton variant="ghost" size="sm" aria-label="Editar sanción" onClick={() => openEditModal(d)}>
-                          <LuPencil />
-                        </IconButton>
-                        <IconButton variant="ghost" size="sm" colorPalette="red" aria-label="Eliminar sanción" onClick={() => handleDelete(d)}>
-                          <LuTrash2 />
-                        </IconButton>
-                      </HStack>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
+                {visibleDisciplines.map((d) => {
+                  const v = getVigencia(d);
+                  return (
+                    <Table.Row key={d.id}>
+                      <Table.Cell fontWeight="semibold">{memberNameById(d.member_id)}</Table.Cell>
+                      <Table.Cell color="fg.muted">{d.reason}</Table.Cell>
+                      <Table.Cell>
+                        <Badge colorPalette={vigenciaColor(v)}>{v}</Badge>
+                      </Table.Cell>
+                      <Table.Cell color="fg.muted">{new Date(d.start_date).toLocaleString()}</Table.Cell>
+                      <Table.Cell color="fg.muted">{new Date(d.end_date).toLocaleString()}</Table.Cell>
+                      <Table.Cell>{d.is_total_suspension ? 'Sí' : 'No'}</Table.Cell>
+                      <Table.Cell textAlign="end">
+                        <HStack gap="2" justify="flex-end">
+                          <IconButton variant="ghost" size="sm" aria-label="Editar sanción" onClick={() => openEditModal(d)}>
+                            <LuPencil />
+                          </IconButton>
+                          <IconButton variant="ghost" size="sm" colorPalette="red" aria-label="Eliminar sanción" onClick={() => handleDelete(d)}>
+                            <LuTrash2 />
+                          </IconButton>
+                        </HStack>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
               </Table.Body>
             </Table.Root>
           )}

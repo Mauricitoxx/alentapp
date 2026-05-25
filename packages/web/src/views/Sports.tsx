@@ -40,11 +40,17 @@ export function SportsView() {
   const [editingSportId, setEditingSportId] = useState<string | null>(null);
 
   // Estado del formulario (Estructura base del Request)
-  const [formData, setFormData] = useState<CreateSportRequest>({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    max_capacity: number | "";
+    additional_price: number | "";
+    requires_medical_certificate: boolean;
+  }>({
     name: "",
     description: "",
-    max_capacity: 1, 
-    additional_price: 0,
+    max_capacity: "", // Inicia vacío
+    additional_price: "", // Inicia vacío
     requires_medical_certificate: false,
   });
 
@@ -66,8 +72,8 @@ export function SportsView() {
     setFormData({ 
       name: "", 
       description: "", 
-      max_capacity: 1, 
-      additional_price: 0, 
+      max_capacity: "", 
+      additional_price: "", 
       requires_medical_certificate: false 
     });
     setIsDialogOpen(true);
@@ -100,7 +106,10 @@ export function SportsView() {
     e.preventDefault();
     
     // Validación de Regla de Negocio en Frontend
-    if (formData.max_capacity <= 0) {
+    const capacityValue = formData.max_capacity === "" ? 0 : Number(formData.max_capacity);
+    const priceValue = formData.additional_price === "" ? 0 : Number(formData.additional_price);
+    
+    if (capacityValue <= 0) {
         alert("La capacidad máxima debe ser mayor a cero.");
         return;
     }
@@ -111,15 +120,15 @@ export function SportsView() {
         // Mapeo estricto para actualizar según la regla de negocio
         const updateData: UpdateSportRequest = {
           description: formData.description,
-          max_capacity: Number(formData.max_capacity),
+          max_capacity: capacityValue,
         };
         await sportsService.update(editingSportId, updateData);
       } else {
         // Estructura completa para dar de alta
         const createData: CreateSportRequest = {
           ...formData,
-          max_capacity: Number(formData.max_capacity),
-          additional_price: Number(formData.additional_price),
+          max_capacity: capacityValue,
+          additional_price: priceValue,
         };
         await sportsService.create(createData);
       }
@@ -193,9 +202,15 @@ export function SportsView() {
                     <Field label="Capacidad Máxima" required>
                         <Input 
                             type="number"
-                            min="1"
+                            placeholder="0"
                             value={formData.max_capacity}
-                            onChange={(e) => setFormData({ ...formData, max_capacity: parseInt(e.target.value, 10) || 0 })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData({ 
+                                ...formData, 
+                                max_capacity: val === "" ? "" : parseInt(val, 10)
+                              });
+                            }}
                             required
                         />
                     </Field>
@@ -205,8 +220,15 @@ export function SportsView() {
                         <Input 
                             type="number"
                             step="0.01"
+                            placeholder="0.00"
                             value={formData.additional_price}
-                            onChange={(e) => setFormData({ ...formData, additional_price: parseFloat(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData({ 
+                                ...formData, 
+                                additional_price: val === "" ? "" : parseFloat(val)
+                              });
+                            }}
                             disabled={!!editingSportId}
                             required
                         />
