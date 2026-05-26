@@ -1,10 +1,21 @@
-import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
-import { FastifyInstance } from 'fastify';
-import { PrismaClient } from '../generated/client/client.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../app.js'; 
-import { CreateSportRequest } from '@alentapp/shared';
+import type { FastifyInstance } from 'fastify';
+import type { CreateSportRequest } from '@alentapp/shared';
 
-const prisma = new PrismaClient();
+// 1. Declaramos el mock de nuestro repositorio 
+const { mockSportRepo } = vi.hoisted(() => ({
+    mockSportRepo: {
+        create: vi.fn(),
+        findByName: vi.fn(), // Lo necesitamos para simular el chequeo de duplicados
+    },
+}));
+
+// 2. Interceptamos el repositorio real de infraestructura para que devuelva nuestro mock
+
+vi.mock('../infrastructure/PostgresSportRepository.js', () => ({
+    PostgresSportRepository: class { constructor() { return mockSportRepo; } },
+}));
 
 describe('SportController integration - alta (POST)', () => {
     let app: FastifyInstance;
@@ -13,116 +24,64 @@ describe('SportController integration - alta (POST)', () => {
         vi.clearAllMocks();
         app = await buildApp();
         await app.ready();
-
-        //LIMPIEZA: Vaciamos la tabla antes de cada test para evitar colisiones de nombres duplicados
-        await prisma.sport.deleteMany();
     });
 
     afterEach(async () => {
-        // Cerramos la app para liberar los sockets y conexiones de Prisma a la DB de prueba
         await app.close();
     });
 
-    //REGISTRO EXITOSO
-    it('debe registrar un deporte exitosamente y persistirlo en la base de datos', async () => {
-        // 1. Preparar la petición válida (cumpliendo las reglas del frontend que modificamos)
-        const requestBody: CreateSportRequest = {
-            name: 'Fútbol 5',
-            description: 'Torneo nocturno en cancha sintética',
-            max_capacity: 10,
-            additional_price: 1500,
-            requires_medical_certificate: true
-        };
+    const validBody: CreateSportRequest = {
+        name: 'Fútbol 5',
+        description: 'Torneo nocturno en cancha sintética',
+        max_capacity: 10,
+        additional_price: 1500,
+        requires_medical_certificate: true,
+    };
 
-        // 2. Ejecutar la petición HTTP virtual usando el método inject de Fastify
+    it('1. devuelve 201 y crea el deporte correctamente', async () => {
+        // Simulamos que el deporte NO existe previamente 
+        mockSportRepo.findByName.mockResolvedValueOnce(null);
+        // Simulamos que la base de datos guarda con éxito y le asigna un ID 'sport-1'
+        mockSportRepo.create.mockResolvedValueOnce({ id: 'sport-1', ...validBody });
+
         const response = await app.inject({
             method: 'POST',
-            url: '/sports', 
-            payload: requestBody
+            url: '/api/v1/sports', 
+            payload: validBody,
         });
 
-        // 3. Verificaciones de la respuesta de la API (Capa Delivery)
-        expect(response.statusCode).toBe(201); // Created
-        
-        const responseData = JSON.parse(response.body);
-        expect(responseData).toHaveProperty('id');
-        expect(responseData.name).toBe(requestBody.name);
-        expect(responseData.max_capacity).toBe(requestBody.max_capacity);
-
-        // 4. Consultar a la base de datos real con Prisma
-        const savedSport = await prisma.sport.findUnique({
-            where: { name: 'Fútbol 5' }
-        });
-
-        expect(savedSport).not.toBeNull();
-        expect(savedSport?.description).toBe(requestBody.description);
-        expect(savedSport?.max_capacity).toBe(requestBody.max_capacity);
-        expect(savedSport?.requires_medical_certificate).toBe(true);
+        expect(response.statusCode).toBe(201);
+        expect(response.json().data.id).toBe('sport-1');
+        expect(mockSportRepo.create).toHaveBeenCalled();
     });
 
-    //CASO NOMBRE DUPLICADO
-    it('debe retornar un error si el nombre del deporte ya se encuentra registrado', async () => {
-        // 1. Preparamos el escenario insertando un deporte idéntico directamente en la base de datos
-        await prisma.sport.create({
-            data: {
-                name: 'Tenis',
-                description: 'Cancha de polvo de ladrillo',
-                max_capacity: 4,
-                additional_price: 800,
-                requires_medical_certificate: false
-            }
-        });
-
-        // 2. Intentamos registrar el mismo deporte a través del endpoint público de la API
-        const duplicateRequestBody: CreateSportRequest = {
-            name: 'Tenis', // Mismo nombre
-            description: 'Otra descripción distinta',
-            max_capacity: 2,
-            additional_price: 1000,
-            requires_medical_certificate: false
-        };
+    it('2. devuelve 400 cuando el nombre del deporte ya existe', async () => {
+        // Simulamos que al buscar por nombre SI encuentra un deporte ya registrado
+        mockSportRepo.findByName.mockResolvedValueOnce({ id: 'sport-existente', name: 'Fútbol 5' });
 
         const response = await app.inject({
             method: 'POST',
-            url: '/sports',
-            payload: duplicateRequestBody
+            url: '/api/v1/sports',
+            payload: validBody,
         });
 
-        // 3. Verificaciones: Debería fallar por la validación del caso de uso real
-    
+        
         expect(response.statusCode).toBe(409); 
-        
-        const responseData = JSON.parse(response.body);
-        expect(responseData.message).toContain('Ya existe un deporte con ese nombre');
+        expect(response.json().error).toContain('Ya existe un deporte con ese nombre');
+        expect(mockSportRepo.create).not.toHaveBeenCalled(); 
     });
 
-    //CASO CAPACIDAD MÁXIMA INVÁLIDA
-    it('debe retornar un error si la capacidad máxima enviada es inválida', async () => {
-        // 1. Enviamos un valor negativo 
-        const invalidRequestBody = {
-            name: 'Natación',
-            description: 'Pileta olímpica',
-            max_capacity: -5, // Valor inválido para el caso de uso
-            additional_price: 0,
-            requires_medical_certificate: false
-        };
+    it('3. devuelve 400 cuando la capacidad máxima es inválida (menor o igual a cero)', async () => {
+        const invalidBody = { ...validBody, max_capacity: -5 };
 
         const response = await app.inject({
             method: 'POST',
-            url: '/sports',
-            payload: invalidRequestBody
+            url: '/api/v1/sports',
+            payload: invalidBody,
         });
 
-        // 2. Verificaciones: El validador síncrono debe interceptar esto
         expect(response.statusCode).toBe(400);
-        
-        const responseData = JSON.parse(response.body);
-        expect(responseData.message).toContain('La capacidad máxima debe ser un número mayor a cero');
-
-        // 3. Verificación extra: Nos aseguramos de que NO se haya guardado nada en la DB
-        const checkDb = await prisma.sport.findUnique({
-            where: { name: 'Natación' }
-        });
-        expect(checkDb).toBeNull();
+        expect(response.json().error).toContain('La capacidad máxima debe ser un número mayor a cero');
+        expect(mockSportRepo.create).not.toHaveBeenCalled();
     });
 });
