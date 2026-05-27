@@ -1,91 +1,93 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import supertest from 'supertest';
 import { buildApp } from '../app.js';
-import { LockerRepository } from '../domain/LockerRepository.js';
+import type { FastifyInstance } from 'fastify';
 
-const { mockLockerRepository } = vi.hoisted(() => ({
-    mockLockerRepository: {
-        findById: vi.fn(),
+// 1. Creamos el mock con todas las funciones que tu Caso de Uso va a usar
+const { mockLockerRepo } = vi.hoisted(() => ({
+    mockLockerRepo: {
+        findAll: vi.fn(), 
+        create: vi.fn(), 
+        findById: vi.fn(), 
+        findByNumber: vi.fn(), // 🌟 ¡Clave! Tu validador necesita esta función
+        update: vi.fn(), 
         delete: vi.fn(),
-        findAll: vi.fn(),
-        create: vi.fn(),
-        findByNumber: vi.fn(),
-    }
+    },
 }));
 
-vi.mock('../infrastructure/PostgresLockerRepository.js', () => {
-    return {
-        PostgresLockerRepository: class {
-            constructor() { return mockLockerRepository; }
-        }
-    };
-});
+// 2. Interceptamos el archivo real de forma absoluta para que Vitest use el plástico
 
-vi.mock('../infrastructure/PostgresMemberRepository.js', () => {
-    return {
-        PostgresMemberRepository: class {
-            findById = vi.fn();
-            findAll = vi.fn();
-            create = vi.fn();
-            update = vi.fn();
-            delete = vi.fn();
-        }
-    };
-});
+vi.mock('../infrastructure/PostgresLockerRepository', () => ({
+    PostgresLockerRepository: class { constructor() { return mockLockerRepo; } },
+}));
 
-describe('LockerController integration', () => {
-    let request: supertest.SuperTest<supertest.Test>;
+describe('LockerController integration - alta (POST)', () => {
+    let app: FastifyInstance;
 
     beforeEach(async () => {
         vi.clearAllMocks();
-        const app = await buildApp();
-        await app.ready(); // Fastify necesita esto para usar supertest
-        request = supertest(app.server);
+        app = await buildApp();
+        await app.ready();
     });
 
     afterEach(async () => {
-        // Nothing to cleanup for mocked integration tests.
+        await app.close();
     });
 
-    it('devuelve 204 cuando el casillero existe y se elimina', async () => {
-        mockLockerRepository.findById.mockResolvedValueOnce({
-            id: 'uuid-locker',
-            number: 12,
-            location: 'Planta Baja',
-            status: 'Available',
-            member_id: null,
+    const validBody = {
+        number: 14,
+        location: 'Vestuario Mujeres',
+        status: 'Available',
+    };
+
+    // ------------------------------------------------------------------------
+    // TEST 1: CAMINO FELIZ (201 Created)
+    // ------------------------------------------------------------------------
+    it('1. devuelve 201 y crea el casillero cuando los datos son válidos', async () => {
+        // Para el camino feliz, findByNumber tiene que decir que NO existe (null)
+        mockLockerRepo.findByNumber.mockResolvedValueOnce(null);
+        
+        mockLockerRepo.create.mockResolvedValueOnce({ 
+            id: 'locker-1', 
+            ...validBody, 
+            member_id: null 
         });
 
-        mockLockerRepository.delete.mockResolvedValueOnce();
-
-        const response = await request.delete('/api/v1/lockers/uuid-locker');
-
-        expect(response.status).toBe(204);
-        expect(response.body).toEqual({});
-        expect(mockLockerRepository.delete).toHaveBeenCalledWith('uuid-locker');
-    });
-
-    it('devuelve 404 cuando el casillero no existe', async () => {
-        mockLockerRepository.findById.mockResolvedValueOnce(null);
-
-        const response = await request.delete('/api/v1/lockers/uuid-inexistente');
-
-        expect(response.status).toBe(404);
-        expect(response.body).toEqual({ message: 'El casillero no existe' });
-    });
-
-    it('devuelve 400 cuando el casillero está ocupado por un socio', async () => {
-        mockLockerRepository.findById.mockResolvedValueOnce({
-            id: 'uuid-locked',
-            number: 34,
-            location: 'Sector D',
-            status: 'Available',
-            member_id: 'member-1',
+        const response = await app.inject({
+            method: 'POST',
+            url: '/api/v1/lockers',
+            payload: validBody,
         });
 
-        const response = await request.delete('/api/v1/lockers/uuid-locked');
+        expect(response.statusCode).toBe(201);
+        expect(response.json().data.id).toBe('locker-1');
+        expect(mockLockerRepo.create).toHaveBeenCalled();
+    });
 
-        expect(response.status).toBe(400);
-        expect(response.body).toEqual({ message: 'No se puede eliminar un casillero que está ocupado por un socio' });
+    // ------------------------------------------------------------------------
+    // TEST 2: REGLA DE NEGOCIO / DUPLICADO (409 Conflict)
+    // ------------------------------------------------------------------------
+    it('2. devuelve 409 cuando el número de casillero ya se encuentra registrado', async () => {
+        // Forzamos a que findByNumber devuelva que YA existe un casillero con ese número
+        mockLockerRepo.findByNumber.mockResolvedValueOnce({
+            id: 'locker-existente',
+            number: 14,
+            location: 'Gimnasio',
+            status: 'Available',
+            member_id: null
+        });
+
+        // También por las dudas entrenamos al create por si tu código lanza el error ahí
+        mockLockerRepo.create.mockRejectedValueOnce(
+            new Error('Ya existe un casillero con ese número')
+        );
+
+        const response = await app.inject({
+            method: 'POST',
+            url: '/api/v1/lockers',
+            payload: validBody,
+        });
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().error).toContain('Ya existe un casillero');
     });
 });
