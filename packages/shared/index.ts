@@ -38,7 +38,7 @@ export interface UpdateMemberRequest {
 export type LockerStatus = 'Available' | 'Occupied' | 'Maintenance';
 
 export interface LockerDTO {
-  id: string; 
+  id: string;
   number: number;
   location: string;
   status: LockerStatus;
@@ -123,6 +123,11 @@ export interface CreateEquipmentLoanRequest {
   item_name: string;
   due_date: string; // ISO Date String
   member_id: string;
+}
+
+export interface UpdateEquipmentLoanRequest {
+  status?: EquipmentLoanStatus;
+  due_date?: string; // ISO Date String
 }
 export interface UpdateSportRequest {
   name?: string;
