@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../app.js'; 
 import type { FastifyInstance } from 'fastify';
-import type { CreateSportRequest } from '@alentapp/shared';
+import type { CreateSportRequest, UpdateSportRequest } from '@alentapp/shared';
 
 // 1. Declaramos el mock de nuestro repositorio 
 const { mockSportRepo } = vi.hoisted(() => ({
     mockSportRepo: {
         create: vi.fn(),
         findByName: vi.fn(), // Lo necesitamos para simular el chequeo de duplicados
+        findById: vi.fn(),
+        update: vi.fn(),
     },
 }));
 
@@ -84,4 +86,52 @@ describe('SportController integration - alta (POST)', () => {
         expect(response.json().error).toContain('La capacidad máxima debe ser un número mayor a cero');
         expect(mockSportRepo.create).not.toHaveBeenCalled();
     });
+
+    it('4. devuelve 200 y actualiza el deporte exitosamente', async () => {
+        const sportId = 'sport-123';
+        const updatePayload: UpdateSportRequest = {
+            description: 'Nueva descripción actualizada',
+            max_capacity: 12
+        };
+
+        const mockExistingSport = { id: sportId, ...validBody };
+        const mockUpdatedSport = { ...mockExistingSport, ...updatePayload };
+
+        // Simulamos que el deporte sí existe cuando el controlador lo busca por ID
+        mockSportRepo.findById.mockResolvedValueOnce(mockExistingSport);
+        // Simulamos que el repositorio realiza la actualización de manera exitosa
+        mockSportRepo.update.mockResolvedValueOnce(mockUpdatedSport);
+
+        const response = await app.inject({
+            method: 'PUT', 
+            url: `/api/v1/sports/${sportId}`,
+            payload: updatePayload,
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json().data.description).toBe(updatePayload.description);
+        expect(response.json().data.max_capacity).toBe(updatePayload.max_capacity);
+        expect(mockSportRepo.update).toHaveBeenCalled();
+    });
+
+    it('5. devuelve 404 cuando se intenta actualizar un deporte que no existe', async () => {
+        const nonExistingId = 'sport-falso';
+        const updatePayload: UpdateSportRequest = {
+            description: 'Intentando editar algo fantasma'
+        };
+
+        // Simulamos que al buscar el deporte por ID, la base de datos devuelve null
+        mockSportRepo.findById.mockResolvedValueOnce(null);
+
+        const response = await app.inject({
+            method: 'PUT', // 
+            url: `/api/v1/sports/${nonExistingId}`,
+            payload: updatePayload,
+        });
+
+        expect(response.statusCode).toBe(404);
+        expect(response.json().error).toContain('El deporte especificado no existe');
+        expect(mockSportRepo.update).not.toHaveBeenCalled(); // Seguridad: No debió persistir nada
+    });
+
 });
