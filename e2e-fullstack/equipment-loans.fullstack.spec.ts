@@ -1,72 +1,65 @@
-import { test, expect as playwrightExpect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-test.describe('Equipment Loans Full-Stack E2E', () => {
+const API = 'http://localhost:3001/api/v1';
 
-  test('debe permitir crear y luego actualizar un préstamo de equipo', async ({ page }) => {
-    
-    // Primero, creamos un miembro para garantizar que haya uno para el préstamo
-    await page.goto('http://localhost:5173/socios');
-    const btnAgregarSocio = page.getByRole('button', { name: /Agregar Socio/i });
-    if (await btnAgregarSocio.isVisible()) {
-        await btnAgregarSocio.click();
-        await page.getByPlaceholder('Ej: 12345678').fill('99999999');
-        await page.getByPlaceholder('Ej: Juan Pérez').fill('Socio Préstamo E2E');
-        await page.getByPlaceholder('ejemplo@correo.com').fill('prestamo@e2e.com');
-        await page.getByLabel(/Fecha de Nacimiento/i).fill('2000-01-01');
-        await page.getByRole('button', { name: 'Crear Socio' }).click();
-        await playwrightExpect(btnAgregarSocio).toBeVisible({ timeout: 5000 }); // esperar a que el modal cierre
-    }
+test.describe('Equipment Loans Update - Full-Stack E2E', () => {
+  const dni = '88888888';
+  const memberName = 'Socio Update E2E';
+  let memberId = '';
+  const itemName = 'Pelota de Básquet Update E2E';
 
-    // Navegar a préstamos de equipos
-    await page.goto('http://localhost:5173/equipment-loans');
+  test('debe permitir actualizar el estado de un préstamo de equipo a Devuelto', async ({ page }) => {
+    // 1. Sembrar un socio real vía API
+    const memberRes = await page.request.post(`${API}/socios`, {
+      data: {
+        name: memberName,
+        dni,
+        email: `update-${dni}@e2e.com`,
+        birthdate: '1990-01-01',
+        category: 'Pleno',
+      },
+    });
+    expect(memberRes.ok()).toBeTruthy();
+    const memberData = await memberRes.json();
+    memberId = memberData.data.id;
 
-    // 1. Alta del préstamo
-    const btnAgregar = page.getByRole('button', { name: /Nuevo Préstamo/i });
-    await playwrightExpect(btnAgregar).toBeVisible();
-    await btnAgregar.click();
-
-    await playwrightExpect(page.getByText('Registrar Nuevo Préstamo')).toBeVisible();
-
-    const itemName = 'Pelota de Básquet E2E';
-    
-    // Seleccionamos el primer miembro del Combobox
-    const comboboxInput = page.getByRole('combobox');
-    await comboboxInput.click();
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-
-    await page.getByPlaceholder('Ej. Raqueta de Tenis').fill(itemName);
-    
-    // Llenar fecha de devolución (un día después)
+    // 2. Sembrar un préstamo real vía API asociado a ese socio
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const dateString = tomorrow.toISOString().slice(0, 16); // Formato YYYY-MM-DDThh:mm
-    await page.locator('input[type="datetime-local"]').fill(dateString);
+    
+    const loanRes = await page.request.post(`${API}/equipment-loans`, {
+      data: {
+        item_name: itemName,
+        due_date: tomorrow.toISOString(),
+        member_id: memberId,
+      },
+    });
+    expect(loanRes.ok()).toBeTruthy();
 
-    const btnCrear = page.getByRole('button', { name: 'Crear Préstamo' });
-    await btnCrear.click();
+    // 3. Ir a la vista de préstamos de equipos
+    await page.goto('/equipment-loans');
 
-    // Verificar que se creó y aparece en la tabla
-    await playwrightExpect(page.getByText(itemName, { exact: true }).first()).toBeVisible();
-
-    // 2. Edición del préstamo
-    // Hacemos click en el botón de editar (lapiz)
+    // 4. Verificar que el préstamo aparece en la tabla con estado 'Loaned'
     const row = page.locator('tr', { hasText: itemName }).first();
-    await row.getByRole('button').first().click(); 
+    await expect(row).toBeVisible({ timeout: 10000 });
+    await expect(row.getByText('Loaned')).toBeVisible();
 
-    await playwrightExpect(page.getByText('Editar Préstamo')).toBeVisible();
+    // 5. Hacer clic en el botón de Editar (icono de lápiz) en esa fila
+    await row.getByRole('button').first().click();
 
-    // Cambiar estado a 'Returned'
+    // 6. Verificar que se abrió el modal de edición
+    await expect(page.getByText('Editar Préstamo')).toBeVisible();
+
+    // 7. Cambiar el estado a 'Returned'
     await page.locator('select').selectOption('Returned');
 
-    const btnGuardar = page.getByRole('button', { name: 'Guardar Cambios' });
-    await btnGuardar.click();
+    // 8. Guardar los cambios
+    await page.getByRole('button', { name: 'Guardar Cambios' }).click();
 
-    // Verificar actualización: el modal debe cerrarse
-    await playwrightExpect(page.getByText('Editar Préstamo')).toBeHidden();
-    
-    // En la tabla, la fila ahora debería decir "Returned" en vez de "Loaned"
-    const updatedRow = page.locator('tr', { hasText: itemName }).first();
-    await playwrightExpect(updatedRow.getByText('Returned')).toBeVisible();
+    // 9. Verificar que el modal se cerró
+    await expect(page.getByText('Editar Préstamo')).toBeHidden();
+
+    // 10. Verificar que en la tabla ahora dice 'Returned' en vez de 'Loaned'
+    await expect(row.getByText('Returned')).toBeVisible();
   });
 });
