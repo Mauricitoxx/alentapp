@@ -3,13 +3,13 @@ import {
   Heading, 
   Stack, 
   Text, 
-  Box,
-  Flex,
-  Input,
-  Table
+  Box, 
+  Flex, 
+  Input, 
+  Table 
 } from "@chakra-ui/react";
-import { LuCheck, LuPlus, LuRotateCw, LuPencil, LuTrash2 } from "react-icons/lu"; 
-import { useState, useEffect } from "react";
+import { LuCheck, LuPlus, LuRotateCw, LuPencil, LuTrash2, LuSearch, LuFilter } from "react-icons/lu"; 
+import { useState, useEffect, useRef } from "react";
 import { lockersService } from "../services/lockers";
 import { membersService } from "../services/members"; 
 import type { CreateLockerRequest, UpdateLockerRequest } from "@alentapp/shared"; 
@@ -37,14 +37,16 @@ export function LockersView() {
   const [lockers, setLockers] = useState<Locker[]>([]);
   const [members, setMembers] = useState<any[]>([]); 
   const [isLoadingList, setIsLoadingList] = useState(false);
+  
+  // Modales independientes
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
   const [editingLockerId, setEditingLockerId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState(false);
   
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [lockerToDelete, setLockerToDelete] = useState<Locker | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -59,10 +61,26 @@ export function LockersView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
+  // Estado inicial del formulario de Alta según TDD-010
   const [formData, setFormData] = useState({
     number: "",
     location: "",
   });
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+
+  // =========================================================================
+  // 🎨 ESTADOS Y REFS DE CONTROL DE UX PARA LOS DESPLEGABLES PERSONALIZADOS
+  // =========================================================================
+  const [showCreateSuggestions, setShowCreateSuggestions] = useState(false);
+  const [showEditSuggestions, setShowEditSuggestions] = useState(false);
+  const createMenuRef = useRef<HTMLDivElement>(null);
+  const editMenuRef = useRef<HTMLDivElement>(null);
+
+  // Expresión regular: Asegura que empiece con letras y previene strings numéricos, emails o basura aislada
+  const formatoUbicacionValido = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]*$/;
 
   const fetchLockers = async () => {
     setIsLoadingList(true);
@@ -80,18 +98,43 @@ export function LockersView() {
 
   useEffect(() => {
     fetchLockers();
-    
     if (typeof membersService !== "undefined" && membersService.getAll) {
       membersService.getAll()
         .then((data) => setMembers(data || []))
         .catch((err) => console.error("Error al cargar miembros en Casilleros:", err));
     }
+
+    // Cerrar los desplegables si se hace click afuera del input o del menú
+    const handleClickOutside = (event: MouseEvent) => {
+      if (createMenuRef.current && !createMenuRef.current.contains(event.target as Node)) {
+        setShowCreateSuggestions(false);
+      }
+      if (editMenuRef.current && !editMenuRef.current.contains(event.target as Node)) {
+        setShowEditSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Opciones base fijas combinadas con el historial limpio de la DB sin duplicados
+  const obtenerSugerenciasUbicacion = () => {
+    const sugerenciasBase = ["Vestuario Masculino", "Vestuario Femenino", "Vestuario Niños"];
+    const desdeBaseDatos = lockers
+      .map(l => l.location)
+      .filter(loc => loc && loc.trim().length >= 4 && isNaN(Number(loc)) && formatoUbicacionValido.test(loc));
+    
+    return Array.from(new Set([...sugerenciasBase, ...desdeBaseDatos]));
+  };
+
+  const sugerenciasFinales = obtenerSugerenciasUbicacion();
 
   const openCreateModal = () => {
     setError(null);
     setSuccess(false);
     setFormData({ number: "", location: "" });
+    setShowCreateSuggestions(false);
     setIsDialogOpen(true);
   };
 
@@ -105,6 +148,7 @@ export function LockersView() {
       status: locker.status || "Available",
       member_id: locker.member_id || "" 
     });
+    setShowEditSuggestions(false);
     setIsEditOpen(true);
   };
 
@@ -118,7 +162,6 @@ export function LockersView() {
     if (!lockerToDelete) return;
     setIsDeleting(true);
     setDeleteError(null);
-
     try {
       await lockersService.delete(lockerToDelete.id);
       setIsDeleteDialogOpen(false);
@@ -140,13 +183,20 @@ export function LockersView() {
     const parsedNumber = parseInt(formData.number, 10);
 
     if (isNaN(parsedNumber) || parsedNumber <= 0) {
-      setError("Está ingresando un valor negativo o un valor que es igual a cero, por lo cual no es válido.");
+      setError("El número de casillero debe ser un entero positivo.");
       setIsSubmitting(false);
       return;
     }
 
-    if (!formData.location.trim()) {
-      setError("La ubicación no puede estar vacía. Debe completar la ubicación para poder crear el casillero.");
+    const ubicacionTrimmed = formData.location.trim();
+    if (!ubicacionTrimmed) {
+      setError("La ubicación del casillero es obligatoria.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (ubicacionTrimmed.length < 4 || !formatoUbicacionValido.test(ubicacionTrimmed) || !isNaN(Number(ubicacionTrimmed))) {
+      setError("La ubicación debe ser un texto descriptivo válido (mínimo 4 caracteres y no puede ser un número).");
       setIsSubmitting(false);
       return;
     }
@@ -154,7 +204,8 @@ export function LockersView() {
     try {
       const payload: CreateLockerRequest = {
         number: parsedNumber,
-        location: formData.location.trim(),
+        location: ubicacionTrimmed,
+        status: "Available" // Requisito TDD: Por defecto Disponible
       };
 
       await lockersService.create(payload);
@@ -169,7 +220,12 @@ export function LockersView() {
       }, 1200);
 
     } catch (err: any) {
-      setError(err.message || "Error al crear el casillero");
+      const errorMsg = err.message || "";
+      if (errorMsg.includes("409") || errorMsg.includes("already exists") || errorMsg.includes("ya existe")) {
+        setError("Ya existe un casillero con el número proporcionado.");
+      } else {
+        setError(errorMsg || "Error interno, reintente más tarde.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -191,19 +247,43 @@ export function LockersView() {
       return;
     }
 
-    if (!editFormData.location.trim()) {
+    const ubicacionEditTrimmed = editFormData.location.trim();
+    if (!ubicacionEditTrimmed) {
       setEditError("La ubicación no puede estar vacía.");
       setIsSubmitting(false);
       return;
     }
 
-    try {
-      const memberIdTrimmed = editFormData.member_id.trim();
-      const finalMemberId = memberIdTrimmed === "" ? null : memberIdTrimmed;
+    if (ubicacionEditTrimmed.length < 4 || !formatoUbicacionValido.test(ubicacionEditTrimmed) || !isNaN(Number(ubicacionEditTrimmed))) {
+      setEditError("La ubicación debe ser un texto descriptivo válido (mínimo 4 caracteres y no puede ser un número).");
+      setIsSubmitting(false);
+      return;
+    }
 
-      // 🌟 REGLA NUEVA: Validar un único casillero por socio
+    const memberIdTrimmed = editFormData.member_id.trim();
+    const finalMemberId = memberIdTrimmed === "" ? null : memberIdTrimmed;
+    const selectedStatus = editFormData.status;
+
+    if (selectedStatus === "Occupied" && finalMemberId === null) {
+      setEditError("Error: Un casillero en estado 'Ocupado' debe tener un miembro asignado.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (selectedStatus === "Maintenance" && finalMemberId !== null) {
+      setEditError("Error : No se puede asignar un socio a un casillero en mantenimiento.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (selectedStatus === "Available" && finalMemberId !== null) {
+      setEditError("Error: Un casillero en estado 'Disponible' no puede tener un miembro asignado.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
       if (finalMemberId !== null) {
-        // Buscamos si el socio ya está asignado a OTRO casillero que no sea el actual
         const socioYaTieneLocker = lockers.some(
           (locker) => locker.member_id === finalMemberId && locker.id !== editingLockerId
         );
@@ -215,21 +295,14 @@ export function LockersView() {
         }
       }
 
-      // Automatización del estado a Ocupado si hay un socio seleccionado
-      let finalStatus = editFormData.status;
-      if (finalMemberId !== null) {
-        finalStatus = "Occupied";
-      }
-
       const payload: UpdateLockerRequest = {
         number: parsedNumber,
-        location: editFormData.location.trim(),
-        status: finalStatus as any,
+        location: ubicacionEditTrimmed,
+        status: selectedStatus as any,
         member_id: finalMemberId 
       };
 
       await lockersService.update(editingLockerId, payload);
-      
       setEditSuccess(true);
       await fetchLockers();
       
@@ -240,14 +313,7 @@ export function LockersView() {
 
     } catch (err: any) {
       const errorMsg = err.message || "";
-      
-      if (
-        errorMsg.includes("Error interno") || 
-        errorMsg.includes("already exists") || 
-        errorMsg.includes("409") || 
-        errorMsg.includes("ya existe") || 
-        errorMsg.includes("unique")
-      ) {
+      if (errorMsg.includes("Error interno") || errorMsg.includes("already exists") || errorMsg.includes("409") || errorMsg.includes("ya existe")) {
         setEditError("El número de casillero ya se encuentra en uso o está asignado a otra ubicación.");
       } else {
         setEditError(errorMsg || "Error al actualizar el casillero");
@@ -257,194 +323,268 @@ export function LockersView() {
     }
   };
 
+  const filteredLockers = lockers.filter((locker) => {
+    const matchesSearch = locker.number.toString().includes(searchQuery.trim());
+    const matchesStatus = statusFilter === "All" || locker.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <>
-      {/* MODAL DE ALTA ORIGINAL */}
-      <DialogRoot open={isDialogOpen} onOpenChange={(e) => setIsDialogOpen(e.open)}>
-        <Stack gap="6" w="full" mt="4">
+      {/* SECCIÓN PRINCIPAL DE LA VISTA */}
+      <Stack gap="6" w="full" mt="4">
+        {/* CABECERA PRINCIPAL */}
+        <Flex justify="space-between" align="center" w="full" wrap="wrap" gap="4">
+          <Stack gap="1">
+            <Heading size="3xl" fontWeight="bold">Gestión de Casilleros</Heading>
+            <Text color="fg.muted" fontSize="sm">
+              Consulta los casilleros disponibles y registra nuevas ubicaciones.
+            </Text>
+          </Stack>
           
-          {/* CABECERA PRINCIPAL */}
-          <Flex justify="space-between" align="center" w="full" wrap="wrap" gap="4">
-            <Stack gap="1">
-              <Heading size="3xl" fontWeight="bold">Gestión de Casilleros</Heading>
-              <Text color="fg.muted" fontSize="sm">
-                Consulta los casilleros disponibles y registra nuevas ubicaciones.
-              </Text>
-            </Stack>
-            
-            <Flex gap="3" ml="auto">
-              <Button 
-                variant="outline" 
-                onClick={fetchLockers} 
-                loading={isLoadingList}
-              >
-                <LuRotateCw style={{ marginRight: '8px' }} /> Actualizar
-              </Button>
-              <Button 
-                colorPalette="blue" 
-                onClick={openCreateModal}
-              >
-                <LuPlus style={{ marginRight: '8px' }} /> Agregar Casillero
-              </Button>
-            </Flex>
+          <Flex gap="3" ml="auto">
+            <Button variant="outline" onClick={fetchLockers} loading={isLoadingList}>
+              <LuRotateCw style={{ marginRight: '8px' }} /> Actualizar
+            </Button>
+            <Button colorPalette="blue" onClick={openCreateModal}>
+              <LuPlus style={{ marginRight: '8px' }} /> Agregar Casillero
+            </Button>
           </Flex>
+        </Flex>
 
-          {/* VENTANITA / MODAL EMERGENTE DE ALTA */}
-          <DialogContent>
-            <form onSubmit={handleSubmit} noValidate>
-              <DialogHeader>
-                <DialogTitle>Registrar Nuevo Casillero</DialogTitle>
-              </DialogHeader>
-              
-              <DialogBody>
-                <Stack gap="4">
-                  {success && (
-                    <Box p="4" bg="green.50" color="green.700" borderRadius="md" border="1px solid" borderColor="green.200">
-                      <Text fontWeight="bold">¡Casillero creado con éxito!</Text>
-                    </Box>
-                  )}
+        {/* BARRA DE BUSCADORES Y FILTROS */}
+        <Flex gap="4" w="full" direction={{ base: "column", md: "row" }} align="center" mt="2">
+          <Box position="relative" flex="1" w="full">
+            <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" zIndex="1" color="fg.muted">
+              <LuSearch size="16" />
+            </Box>
+            <Input
+              placeholder="Buscar por número de casillero..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              pl="10"
+              bg="bg.panel"
+              borderRadius="lg"
+              borderWidth="1px"
+              _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
+            />
+          </Box>
 
-                  {error && (
-                    <Box p="4" bg="red.50" color="red.700" borderRadius="md" border="1px solid" borderColor="red.200">
-                      <Text fontWeight="bold">Error de validación:</Text>
-                      <Text>{error}</Text>
-                    </Box>
-                  )}
+          <Flex align="center" gap="2" w={{ base: "full", md: "auto" }}>
+            <Box color="fg.muted" display={{ base: "none", sm: "block" }}>
+              <LuFilter size="16" />
+            </Box>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                width: '100%',
+                minWidth: '180px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0',
+                background: 'white',
+                fontSize: '14px',
+                fontWeight: 'medium',
+                color: '#4A5568',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="All">Todos los estados</option>
+              <option value="Available">Disponible</option>
+              <option value="Occupied">Ocupado</option>
+              <option value="Maintenance">Mantenimiento</option>
+            </select>
+          </Flex>
+        </Flex>
 
-                  <Field label="Número de Casillero" required>
+        {/* CONTENEDOR DE LA TABLA REESTRUCTURADO EN DOS COLUMNAS INDEPENDIENTES */}
+        <Box bg="bg.panel" borderRadius="xl" boxShadow="sm" borderWidth="1px" overflow="hidden">
+          <Table.Root size="md" variant="line" interactive>
+            <Table.Header >
+              <Table.Row bg="bg.muted/50">
+                <Table.ColumnHeader py="4" fontWeight="bold">Casillero</Table.ColumnHeader>
+                <Table.ColumnHeader py="4" fontWeight="bold">Ubicación del Casillero</Table.ColumnHeader>
+                <Table.ColumnHeader py="4" fontWeight="bold">Estado</Table.ColumnHeader>
+                <Table.ColumnHeader py="4" fontWeight="bold">Miembro</Table.ColumnHeader>
+                <Table.ColumnHeader py="4" fontWeight="bold" textAlign="right">Acciones</Table.ColumnHeader> 
+              </Table.Row>
+            </Table.Header>
+
+            <Table.Body>
+              {isLoadingList ? (
+                <Table.Row>
+                  <Table.Cell colSpan={5} textAlign="center" py="8" color="fg.muted">
+                    Cargando casilleros...
+                  </Table.Cell>
+                </Table.Row>
+              ) : filteredLockers.length === 0 ? (
+                <Table.Row>
+                  <Table.Cell colSpan={5} textAlign="center" py="12" color="fg.muted">
+                    <Text fontWeight="medium">
+                      {lockers.length === 0 
+                        ? "No se encontraron casilleros." 
+                        : "No se encontraron casilleros que coincidan con la búsqueda."}
+                    </Text>
+                  </Table.Cell>
+                </Table.Row>
+              ) : (
+                filteredLockers.map((locker) => {
+                  const socioAsignado = locker.member_id 
+                    ? members.find(m => m.id === locker.member_id) 
+                    : null;
+
+                  return (
+                    <Table.Row key={locker.id} _hover={{ bg: "bg.muted/30" }}>
+                      <Table.Cell fontWeight="semibold" color="fg.emphasized">{locker.number}</Table.Cell>
+                      <Table.Cell color="fg.muted">{locker.location}</Table.Cell>
+                      
+                      {/* 🟢 COLUMNA ESTADO PURO */}
+                      <Table.Cell py="3">
+                        <Box 
+                          display="inline-block" px="2" py="0.5" borderRadius="md" fontSize="xs" fontWeight="bold"
+                          bg={locker.status === "Maintenance" ? "red.50" : locker.status === "Occupied" ? "orange.50" : "green.50"} 
+                          color={locker.status === "Maintenance" ? "red.700" : locker.status === "Occupied" ? "orange.700" : "green.700"}
+                        >
+                          {locker.status === "Available" || !locker.status ? "Disponible" : locker.status === "Maintenance" ? "Mantenimiento" : "Ocupado"}
+                        </Box>
+                      </Table.Cell>
+
+                      {/* 👤 COLUMNA MIEMBRO ASIGNADO CON RELLENADOR INTELIGENTE */}
+                      <Table.Cell py="3">
+                        {socioAsignado ? (
+                          <Stack gap="0" direction="column">
+                            <Text fontSize="xs" color="fg.emphasized" fontWeight="semibold" textTransform="capitalize">
+                              👤 {socioAsignado.name} {socioAsignado.lastName || ''}
+                            </Text>
+                            <Text fontSize="10px" color="fg.muted" ml="4">DNI: {socioAsignado.dni}</Text>
+                          </Stack>
+                        ) : (
+                          <Text fontSize="sm" color="gray.400" fontWeight="medium">—</Text>
+                        )}
+                      </Table.Cell>
+
+                      <Table.Cell textAlign="right"> 
+                        <Button size="sm" variant="ghost" onClick={() => openEditModal(locker)}>
+                          <LuPencil /> 
+                        </Button>
+                        <Button size="sm" variant="ghost" colorPalette="red" onClick={() => openDeleteModal(locker)}>
+                          <LuTrash2 /> 
+                        </Button>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })
+              )}
+            </Table.Body>
+          </Table.Root>
+        </Box>
+      </Stack>
+
+      {/* =========================================================================
+          🆕 MODAL EMERGENTE PARA EL ALTA DE CASILLEROS (MAQUETACIÓN FINA UX/UI)
+         ========================================================================= */}
+      <DialogRoot open={isDialogOpen} onOpenChange={(e) => setIsDialogOpen(e.open)}>
+        <DialogContent>
+          <form onSubmit={handleSubmit} noValidate>
+            <DialogHeader>
+              <DialogTitle>Agregar Nuevo Casillero</DialogTitle>
+            </DialogHeader>
+            
+            <DialogBody>
+              <Stack gap="4">
+                {success && (
+                  <Box p="4" bg="green.50" color="green.700" borderRadius="md" border="1px solid" borderColor="green.200">
+                    <Text fontWeight="bold">¡Casillero registrado con éxito!</Text>
+                  </Box>
+                )}
+
+                {error && (
+                  <Box p="4" bg="red.50" color="red.700" borderRadius="md" border="1px solid" borderColor="red.200">
+                    <Text fontWeight="bold">Error en la operación:</Text>
+                    <Text>{error}</Text>
+                  </Box>
+                )}
+
+                <Field label="Número de Casillero" required>
+                  <Input 
+                    type="number" 
+                    min="1"
+                    placeholder="Ej: 14"
+                    value={formData.number}
+                    onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                    autoComplete="off"
+                  />
+                </Field>
+
+                <Field label="Ubicación del Casillero" required>
+                  <Box position="relative" w="full" ref={createMenuRef}>
                     <Input 
-                      type="number" 
-                      min="1"          
-                      step="1"         
-                      placeholder="Ej. 104" 
-                      value={formData.number}
-                      onChange={(e) => {
-                        setFormData({ ...formData, number: e.target.value });
-                        setError(null); 
-                        setSuccess(false);
-                      }}
-                    />
-                  </Field>
-
-                  <Field label="Localidad / Ubicación" required>
-                    <Input 
-                      placeholder="Ej. Pasillo Central - Planta Alta" 
+                      placeholder="Ej: Vestuario Masculino"
                       value={formData.location}
                       onChange={(e) => {
                         setFormData({ ...formData, location: e.target.value });
-                        setError(null);
-                        setSuccess(false);
+                        setShowCreateSuggestions(true);
                       }}
+                      onFocus={() => setShowCreateSuggestions(true)}
+                      autoComplete="off" 
                     />
-                  </Field>
-                </Stack>
-              </DialogBody>
-
-              <DialogFooter>
-                <DialogActionTrigger asChild>
-                  <Button variant="outline">Cancelar</Button>
-                </DialogActionTrigger>
-                <Button type="submit" colorPalette="blue" loading={isSubmitting}>
-                  <LuCheck style={{ marginRight: '8px' }} /> Crear Casillero
-                </Button>
-              </DialogFooter>
-              <DialogCloseTrigger />
-            </form>
-          </DialogContent>
-
-          {/* CONTENEDOR DE LA TABLA CON ESTILO GRIS DE MIEMBROS */}
-          <Box 
-            bg="bg.panel" 
-            borderRadius="xl" 
-            boxShadow="sm" 
-            borderWidth="1px" 
-            overflow="hidden"
-            position="relative"
-          >
-            <Table.Root size="md" variant="line" interactive>
-              <Table.Header bg="bg.muted/50">
-                <Table.Row>
-                  <Table.ColumnHeader py="4" fontWeight="bold">Casillero</Table.ColumnHeader>
-                  <Table.ColumnHeader py="4" fontWeight="bold">Ubicación / Localidad</Table.ColumnHeader>
-                  <Table.ColumnHeader py="4" fontWeight="bold">Estado / Miembro</Table.ColumnHeader>
-                  <Table.ColumnHeader py="4" fontWeight="bold" textAlign="right">Acciones</Table.ColumnHeader> 
-                </Table.Row>
-              </Table.Header>
-
-              <Table.Body>
-                {isLoadingList ? (
-                  <Table.Row>
-                    <Table.Cell colSpan={4} textAlign="center" py="8" color="fg.muted">
-                      Cargando casilleros...
-                    </Table.Cell>
-                  </Table.Row>
-                ) : lockers.length === 0 ? (
-                  <Table.Row>
-                    <Table.Cell colSpan={4} textAlign="center" py="12" color="fg.muted">
-                      <Text fontWeight="medium">No se encontraron casilleros.</Text>
-                      <Button variant="ghost" size="sm" mt="2" onClick={openCreateModal}>
-                        Crear el primero
-                      </Button>
-                    </Table.Cell>
-                  </Table.Row>
-                ) : (
-                  lockers.map((locker) => {
-                    const socioAsignado = locker.member_id 
-                      ? members.find(m => m.id === locker.member_id) 
-                      : null;
-
-                    return (
-                      <Table.Row key={locker.id} _hover={{ bg: "bg.muted/30" }}>
-                        <Table.Cell fontWeight="semibold" color="fg.emphasized">
-                          {locker.number}
-                        </Table.Cell>
-                        <Table.Cell color="fg.muted">{locker.location}</Table.Cell>
-                        <Table.Cell py="3">
-                          <Stack align="flex-start" gap="1" direction="column">
-                            <Box 
-                              display="inline-block" 
-                              px="2" 
-                              py="0.5" 
-                              borderRadius="md" 
-                              fontSize="xs" 
-                              fontWeight="bold"
-                              bg={locker.status === "Maintenance" ? "red.50" : locker.status === "Occupied" ? "orange.50" : "green.50"} 
-                              color={locker.status === "Maintenance" ? "red.700" : locker.status === "Occupied" ? "orange.700" : "green.700"}
+                    
+                    {showCreateSuggestions && sugerenciasFinales.length > 0 && (
+                      <Box
+                        position="absolute"
+                        top="100%"
+                        left="0"
+                        w="full"
+                        bg="white"
+                        borderWidth="1px"
+                        borderColor="gray.200"
+                        borderRadius="md"
+                        boxShadow="lg"
+                        mt="1"
+                        zIndex="10"
+                        maxH="200px"
+                        overflowY="auto"
+                      >
+                        {sugerenciasFinales
+                          .filter(sug => sug.toLowerCase().includes(formData.location.toLowerCase()))
+                          .map((sugerencia) => (
+                            <Box
+                              key={sugerencia}
+                              py="2"
+                              px="3"
+                              fontSize="sm"
+                              color="gray.700"
+                              _hover={{ bg: "gray.50", cursor: "pointer" }}
+                              onMouseDown={() => {
+                                setFormData({ ...formData, location: sugerencia });
+                                setShowCreateSuggestions(false);
+                              }}
                             >
-                              {locker.status === "Available" || !locker.status ? "Disponible" : locker.status === "Maintenance" ? "Mantenimiento" : "Ocupado"}
+                              {sugerencia}
                             </Box>
-                            
-                            {socioAsignado && (
-                              <Stack gap="0" direction="column" mt="1">
-                                <Text fontSize="xs" color="fg.emphasized" fontWeight="semibold">
-                                  👤 {socioAsignado.name} {socioAsignado.lastName || ''}
-                                </Text>
-                                <Text fontSize="10px" color="fg.muted" ml="4">
-                                  DNI: {socioAsignado.dni}
-                                </Text>
-                              </Stack>
-                            )}
-                          </Stack>
-                        </Table.Cell>
-                        <Table.Cell textAlign="right"> 
-                          <Button size="sm" variant="ghost" onClick={() => openEditModal(locker)}>
-                            <LuPencil /> Editar
-                          </Button>
-                          <Button size="sm" variant="ghost" colorPalette="red" onClick={() => openDeleteModal(locker)}>
-                            <LuTrash2 /> Eliminar
-                          </Button>
-                        </Table.Cell>
-                      </Table.Row>
-                    );
-                  })
-                )}
-              </Table.Body>
-            </Table.Root>
-          </Box>
-        </Stack>
+                          ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Field>
+              </Stack>
+            </DialogBody>
+
+            <DialogFooter>
+              <DialogActionTrigger asChild>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+              </DialogActionTrigger>
+              <Button type="submit" colorPalette="blue" loading={isSubmitting}>
+                <LuCheck style={{ marginRight: '8px' }} /> Crear Casillero
+              </Button>
+            </DialogFooter>
+            <DialogCloseTrigger />
+          </form>
+        </DialogContent>
       </DialogRoot>
 
-      {/* MODAL EMERGENTE PARA LA EDICIÓN */}
+      {/* MODAL EMERGENTE PARA LA EDICIÓN (MAQUETACIÓN FINA UX/UI) */}
       <DialogRoot open={isEditOpen} onOpenChange={(e) => setIsEditOpen(e.open)}>
         <DialogContent>
           <form onSubmit={handleEditSubmit} noValidate>
@@ -473,26 +613,64 @@ export function LockersView() {
                     min="1"
                     value={editFormData.number}
                     onChange={(e) => setEditFormData({ ...editFormData, number: e.target.value })}
+                    autoComplete="off"
                   />
                 </Field>
 
-                <Field label="Localidad / Ubicación" required>
-                  <Input 
-                    value={editFormData.location}
-                    onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
-                  />
+                <Field label="Ubicación del Casillero" required>
+                  <Box position="relative" w="full" ref={editMenuRef}>
+                    <Input 
+                      value={editFormData.location}
+                      onChange={(e) => {
+                        setEditFormData({ ...editFormData, location: e.target.value });
+                        setShowEditSuggestions(true);
+                      }}
+                      onFocus={() => setShowEditSuggestions(true)}
+                      autoComplete="off" 
+                    />
+                    
+                    {showEditSuggestions && sugerenciasFinales.length > 0 && (
+                      <Box
+                        position="absolute"
+                        top="100%"
+                        left="0"
+                        w="full"
+                        bg="white"
+                        borderWidth="1px"
+                        borderColor="gray.200"
+                        borderRadius="md"
+                        boxShadow="lg"
+                        mt="1"
+                        zIndex="10"
+                        maxH="200px"
+                        overflowY="auto"
+                      >
+                        {sugerenciasFinales
+                          .filter(sug => sug.toLowerCase().includes(editFormData.location.toLowerCase()))
+                          .map((sugerencia) => (
+                            <Box
+                              key={sugerencia}
+                              py="2"
+                              px="3"
+                              fontSize="sm"
+                              color="gray.700"
+                              _hover={{ bg: "gray.50", cursor: "pointer" }}
+                              onMouseDown={() => {
+                                setEditFormData({ ...editFormData, location: sugerencia });
+                                setShowEditSuggestions(false);
+                              }}
+                            >
+                              {sugerencia}
+                            </Box>
+                          ))}
+                      </Box>
+                    )}
+                  </Box>
                 </Field>
 
                 <Field label="Estado del Casillero">
                   <select 
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '6px',
-                      border: '1px solid #E2E8F0',
-                      background: 'white',
-                      fontSize: '14px'
-                    }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0', background: 'white', fontSize: '14px' }}
                     value={editFormData.status}
                     onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
                   >
@@ -504,15 +682,7 @@ export function LockersView() {
 
                 <Field label="Socio Asignado (Identificado por DNI)">
                   <select 
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '6px',
-                      border: '1px solid #E2E8F0',
-                      background: 'white',
-                      fontSize: '14px',
-                      color: '#2D3748'
-                    }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0', background: 'white', fontSize: '14px', color: '#2D3748' }}
                     value={editFormData.member_id}
                     onChange={(e) => setEditFormData({ ...editFormData, member_id: e.target.value })}
                   >
@@ -554,9 +724,7 @@ export function LockersView() {
               </Box>
             )}
             <Text>¿Estás seguro de que deseas eliminar el casillero <b>{lockerToDelete?.number}</b> de forma permanente?</Text>
-            <Text mt="2" fontSize="sm" color="fg.muted">
-              Esta acción no se puede deshacer.
-            </Text>
+            <Text mt="2" fontSize="sm" color="fg.muted">Esta acción no se puede deshacer.</Text>
           </DialogBody>
           <DialogFooter>
             <DialogActionTrigger asChild>
