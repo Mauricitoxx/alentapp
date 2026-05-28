@@ -77,11 +77,18 @@ export class LockerController {
             const updatedLocker = await this.updateLockerUseCase.execute(id, request.body);
             return reply.status(200).send({ data: updatedLocker });
         } catch (error: any) {
-            // Respeta tu misma lógica pura: extrae el statusCode que le inyectó el UseCase
+            const message = error.message;
+
+            // 🌟 AGREGÁS ESTA CONDICIÓN ACÁ:
+            if (message && message.includes('Maintenance')) {
+                return reply.status(400).send({ error: message });
+            }
+
+            // Mantiene tu lógica por si algún otro error sí trae statusCode inyectado
             const statusCode = error.statusCode || 500;
-            const message = statusCode === 500 ? 'Error interno, reintente más tarde' : error.message;
+            const finalMessage = statusCode === 500 ? 'Error interno, reintente más tarde' : message;
             
-            return reply.status(statusCode).send({ error: message });
+            return reply.status(statusCode).send({ error: finalMessage });
         }
     }
 
