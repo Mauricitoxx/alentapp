@@ -6,7 +6,7 @@ test.describe('Sports View - Full-Stack E2E', () => {
   const initialSportName = `Pádel E2E ${uniqueId}`;
   const updatedDescription = 'Descripción modificada en tiempo real por el test E2E';
 
-  test('debe completar el ciclo de vida de un deporte (creación y posterior edición)', async ({ page }) => {
+  test('debe completar el ciclo de vida de un deporte (creación, edición y posterior eliminación)', async ({ page }) => {
     
     // 1. Navegar a la vista de deportes
     await page.goto('/sports');
@@ -53,7 +53,7 @@ test.describe('Sports View - Full-Stack E2E', () => {
     await expect(page.getByText(`Editar Deporte: ${initialSportName}`)).toBeVisible();
     await expect(page.getByLabel('Nombre del Deporte')).toBeDisabled();
     
-    // Validamos también que las reglas impidan bloquear campos mutables (Precio o Requisitos) en la UI
+    // Validamos que el campo no pueda modificarse
     await expect(page.getByLabel('Precio Adicional')).toBeDisabled();
     
     // Modificamos la descripción y la capacidad (Campos permitidos por tu UpdateSportRequest)
@@ -69,5 +69,24 @@ test.describe('Sports View - Full-Stack E2E', () => {
     // Verificación final en la tabla: los cambios deben verse reflejados de inmediato
     await expect(row.getByText(updatedDescription)).toBeVisible();
     await expect(row.getByText('30')).toBeVisible();
+
+    /* ==========================================================================
+       FLUJO 3: ELIMINACIÓN DEL DEPORTE 
+       ========================================================================== */
+
+    // 1. Preparamos el interceptor para el diálogo nativo de confirmación (confirm)
+    page.once('dialog', async (dialog) => {
+      // Verificamos que el texto de alerta sea el esperado por negocio
+      expect(dialog.message()).toContain(`¿Estás seguro de que deseas eliminar el deporte "${initialSportName}"?`);
+      
+      // Simulamos que el usuario hace clic en "Aceptar" / "OK"
+      await dialog.accept();
+    });
+
+    // 2. Hacemos clic en el botón de eliminación de nuestra fila específica por su rol o etiqueta
+    await row.getByRole('button', { name: 'Eliminar deporte' }).click();
+
+    // 3. Verificación final: La fila debe desaparecer por completo de la grilla de la UI
+    await expect(row).toBeHidden({ timeout: 5000 });
   });
 });
