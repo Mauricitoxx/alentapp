@@ -55,9 +55,8 @@ test.describe('Disciplines Alta - Full-Stack E2E', () => {
     // 6. Verificar que aparece en la tabla con badge Vigente
     await expect(page.getByText('Conducta antideportiva E2E')).toBeVisible({ timeout: 10000 });
 
-
     // 7. Probar el feature de filtro: buscar al socio y ver el resumen
-    await page.getByPlaceholder('Filtrar por nombre o DNI...').fill('Socio Alta');
+    await page.getByPlaceholder('Filtrar: buscar socio por nombre o DNI').fill('Socio Alta');
     const filterResult = page.locator('p.css-1umixiy', { hasText: memberName });
     await expect(filterResult).toBeVisible();
     await filterResult.click();
