@@ -8,6 +8,8 @@ const { mockSportRepo } = vi.hoisted(() => ({
     mockSportRepo: {
         create: vi.fn(),
         findByName: vi.fn(), // Lo necesitamos para simular el chequeo de duplicados
+        findById: vi.fn(), // Lo agregamos para validar la existencia antes de borrar
+        delete: vi.fn()
     },
 }));
 
@@ -84,4 +86,40 @@ describe('SportController integration - alta (POST)', () => {
         expect(response.json().error).toContain('La capacidad máxima debe ser un número mayor a cero');
         expect(mockSportRepo.create).not.toHaveBeenCalled();
     });
+});
+
+//Integración para la funcionalidad de eliminación (DELETE)
+describe('SportController integration - eliminación (DELETE)', () => {
+    let app: FastifyInstance;
+
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        app = await buildApp();
+        await app.ready();
+    });
+
+    afterEach(async () => {
+        await app.close();
+    });
+
+    it('1. devuelve 204 No Content cuando el deporte existe y es eliminado exitosamente', async () => {
+        // Simulamos que el deporte si existe en el sistema
+        mockSportRepo.findById.mockResolvedValueOnce({ 
+            id: 'sport-123', 
+            name: 'Básquet' 
+        });
+        // Simulamos la resolución exitosa del delete en persistencia
+        mockSportRepo.delete.mockResolvedValueOnce(undefined);
+
+        const response = await app.inject({
+            method: 'DELETE',
+            url: '/api/v1/sports/sport-123',
+        });
+
+        // Al eliminar de forma correcta, la API REST estándar debe retornar un estado 204 sin cuerpo
+        expect(response.statusCode).toBe(204);
+        expect(mockSportRepo.findById).toHaveBeenCalledWith('sport-123');
+        expect(mockSportRepo.delete).toHaveBeenCalledWith('sport-123');
+    });
+
 });
