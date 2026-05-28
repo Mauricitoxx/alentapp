@@ -105,6 +105,15 @@ export interface CreateSportRequest {
   requires_medical_certificate: boolean;
 }
 
+export interface UpdateSportRequest {
+  name?: string;
+  description?: string;
+  max_capacity?: number;
+  additional_price?: number;
+  requires_medical_certificate?: boolean;
+}
+
+
 // ==========================================
 // Equipment Loan
 // ==========================================
@@ -123,11 +132,4 @@ export interface CreateEquipmentLoanRequest {
   item_name: string;
   due_date: string; // ISO Date String
   member_id: string;
-}
-export interface UpdateSportRequest {
-  name?: string;
-  description?: string;
-  max_capacity?: number;
-  additional_price?: number;
-  requires_medical_certificate?: boolean;
 }
