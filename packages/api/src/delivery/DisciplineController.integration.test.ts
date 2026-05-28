@@ -120,3 +120,48 @@ describe('DisciplineController integration - update (PUT)', () => {
         expect(response.json().error).toContain('no existe');
     });
 });
+
+describe('DisciplineController integration - delete (DELETE)', () => {
+    let app: FastifyInstance;
+    const validUuid = '11111111-2222-3333-4444-555555555555';
+
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        app = await buildApp();
+        await app.ready();
+    });
+
+    afterEach(async () => {
+        await app.close();
+    });
+
+    it('1. devuelve 204 cuando la sanción existe y se elimina', async () => {
+        mockDisciplineRepo.findById.mockResolvedValueOnce({
+            id: validUuid, reason: 'x',
+            start_date: '2030-01-01T00:00:00.000Z', end_date: '2030-02-01T00:00:00.000Z',
+            is_total_suspension: false, member_id: 'm-1', created_at: '2026-05-23T00:00:00.000Z',
+        });
+        mockDisciplineRepo.delete.mockResolvedValueOnce(undefined);
+
+        const response = await app.inject({
+            method: 'DELETE',
+            url: `/api/v1/disciplines/${validUuid}`,
+        });
+
+        expect(response.statusCode).toBe(204);
+        expect(mockDisciplineRepo.delete).toHaveBeenCalledWith(validUuid);
+    });
+
+    it('2. devuelve 404 cuando la sanción no existe', async () => {
+        mockDisciplineRepo.findById.mockResolvedValueOnce(null);
+
+        const response = await app.inject({
+            method: 'DELETE',
+            url: `/api/v1/disciplines/${validUuid}`,
+        });
+
+        expect(response.statusCode).toBe(404);
+        expect(response.json().error).toContain('no existe');
+        expect(mockDisciplineRepo.delete).not.toHaveBeenCalled();
+    });
+});
