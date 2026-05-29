@@ -87,6 +87,7 @@ export class LockerController {
             // Mantiene tu lógica por si algún otro error sí trae statusCode inyectado
             const statusCode = error.statusCode || 500;
             const finalMessage = statusCode === 500 ? 'Error interno, reintente más tarde' : message;
+
             
             return reply.status(statusCode).send({ error: finalMessage });
         }
