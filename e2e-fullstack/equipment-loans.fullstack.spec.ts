@@ -23,8 +23,8 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
     });
   });
 
-  test('1. debe crear un préstamo desde la UI y mostrarlo en la tabla', async ({ page }) => {
-    await page.goto('/equipment-loans');
+  test('1. debe crear un préstamo desde la UI y mostrarlo en la tabla', async ({ page, baseURL }) => {
+    await page.goto(`${baseURL || 'http://localhost:5174'}/equipment-loans`);
 
     // Clic en Nuevo Préstamo
     await page.locator('button:has-text("Nuevo Préstamo")').click();

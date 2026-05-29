@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { FastifyInstance } from 'fastify';
 
 // Seteamos una variable de entorno falsa para que no falle la importación de repositorios reales
-process.env.DATABASE_URL = 'postgres://dummy:dummy@localhost:5432/dummy';
+vi.hoisted(() => {
+    process.env.DATABASE_URL = 'postgres://dummy:dummy@localhost:5432/dummy';
+});
 
 import { buildApp } from '../app.js';
 import { CreateEquipmentLoanRequest } from '@alentapp/shared';

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, Mocked } from 'vitest';
 import { CreateEquipmentLoanUseCase } from './NewEquipmentLoanUseCase.js';
 import { EquipmentLoanRepository } from '../domain/EquipmentLoanRepository.js';
 import { MemberRepository } from '../domain/MemberRepository.js';
@@ -7,9 +7,9 @@ import { CreateEquipmentLoanRequest } from '@alentapp/shared';
 
 describe('CreateEquipmentLoanUseCase', () => {
     let useCase: CreateEquipmentLoanUseCase;
-    let equipmentLoanRepoMock: vi.Mocked<EquipmentLoanRepository>;
-    let memberRepoMock: vi.Mocked<MemberRepository>;
-    let validatorMock: vi.Mocked<EquipmentLoanValidator>;
+    let equipmentLoanRepoMock: Mocked<EquipmentLoanRepository>;
+    let memberRepoMock: Mocked<MemberRepository>;
+    let validatorMock: Mocked<EquipmentLoanValidator>;
 
     beforeEach(() => {
         equipmentLoanRepoMock = {
@@ -18,7 +18,7 @@ describe('CreateEquipmentLoanUseCase', () => {
             create: vi.fn(),
             update: vi.fn(),
             delete: vi.fn(),
-        } as unknown as vi.Mocked<EquipmentLoanRepository>;
+        } as unknown as Mocked<EquipmentLoanRepository>;
 
         memberRepoMock = {
             findAll: vi.fn(),
@@ -28,12 +28,12 @@ describe('CreateEquipmentLoanUseCase', () => {
             delete: vi.fn(),
             findByDni: vi.fn(),
             findByEmail: vi.fn(),
-        } as unknown as vi.Mocked<MemberRepository>;
+        } as unknown as Mocked<MemberRepository>;
 
         validatorMock = {
             validateDueDateIsFuture: vi.fn(),
             validateStatus: vi.fn(),
-        } as unknown as vi.Mocked<EquipmentLoanValidator>;
+        } as unknown as Mocked<EquipmentLoanValidator>;
 
         useCase = new CreateEquipmentLoanUseCase(
             equipmentLoanRepoMock,
