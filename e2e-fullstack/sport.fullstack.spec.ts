@@ -87,4 +87,25 @@ test.describe('Sports View - Full-Stack E2E', () => {
     });
   });
 
+  /* ==========================================================================
+     FLUJO 3: ELIMINACIÓN DEL DEPORTE
+     ========================================================================== */
+  test.describe('Eliminación (DELETE)', () => {
+    test('debe confirmar el diálogo nativo y remover la fila del sistema', async ({ page }) => {
+      // Asegurar que el elemento modificado está visible en la grilla
+      await expect(row).toBeVisible();
+
+      // 1. Preparamos el interceptor para el diálogo nativo de confirmación
+      page.once('dialog', async (dialog) => {
+        expect(dialog.message()).toContain(`¿Estás seguro de que deseas eliminar el deporte "${initialSportName}"?`);
+        await dialog.accept();
+      });
+
+      // 2. Hacemos clic en el botón de eliminación de nuestra fila
+      await row.getByRole('button', { name: 'Eliminar deporte' }).click();
+
+      // 3. Verificación de remoción completa del DOM
+      await expect(row).toBeHidden({ timeout: 5000 });
+    });
+  });
 });
