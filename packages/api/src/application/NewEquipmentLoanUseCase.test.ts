@@ -57,8 +57,8 @@ describe('CreateEquipmentLoanUseCase', () => {
             birthdate: '1990-01-01',
             status: 'Activo',
             category: 'Pleno',
-            created_at: new Date(),
-            updated_at: new Date(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
         });
 
         equipmentLoanRepoMock.create.mockResolvedValue({
@@ -109,8 +109,8 @@ describe('CreateEquipmentLoanUseCase', () => {
             birthdate: '1990-01-01',
             status: 'Suspendido', // No Activo
             category: 'Pleno',
-            created_at: new Date(),
-            updated_at: new Date(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
         });
 
         await expect(useCase.execute(req)).rejects.toThrow('El socio debe estar Activo para solicitar prestamos');
@@ -132,8 +132,8 @@ describe('CreateEquipmentLoanUseCase', () => {
             birthdate: '1990-01-01',
             status: 'Activo',
             category: 'Cadete', // Categoría no permitida
-            created_at: new Date(),
-            updated_at: new Date(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
         });
 
         await expect(useCase.execute(req)).rejects.toThrow('Los socios Cadet tienen prohibido solicitar material');

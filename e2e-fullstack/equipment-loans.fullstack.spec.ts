@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:3001/api/v1';
+const API = 'http://localhost:3000/api/v1';
 
 /**
  * Tests E2E Full-Stack para Préstamos de Equipamiento.
- * Playwright interactúa con el frontend en localhost:5173 y la API real en localhost:3001.
+ * Playwright interactúa con el frontend en localhost:5173 y la API real en localhost:3000.
  */
 test.describe('Equipment Loans - Full-Stack E2E', () => {
   const dni = '99991111';
@@ -24,7 +24,7 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
   });
 
   test('1. debe crear un préstamo desde la UI y mostrarlo en la tabla', async ({ page, baseURL }) => {
-    await page.goto(`${baseURL || 'http://localhost:5174'}/equipment-loans`);
+    await page.goto(`${baseURL || 'http://localhost:5173'}/equipment-loans`);
 
     // Clic en Nuevo Préstamo
     await page.locator('button:has-text("Nuevo Préstamo")').click();
@@ -55,7 +55,8 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
     // Verificar que se haya cerrado el modal y aparezca en la tabla
     await expect(page.getByRole('button', { name: 'Crear Préstamo' })).toBeHidden();
     await expect(page.getByText('Pelota Oficial E2E')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Loaned')).toBeVisible();
+    const row = page.locator('tr', { hasText: 'Pelota Oficial E2E' });
+    await expect(row.getByText('Loaned')).toBeVisible();
   });
 
 });
