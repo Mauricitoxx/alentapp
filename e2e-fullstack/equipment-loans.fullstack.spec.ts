@@ -1,20 +1,22 @@
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:3001/api/v1';
+const API = 'http://localhost:3000/api/v1';
 
-test.describe('Equipment Loans Update - Full-Stack E2E', () => {
-  const dni = '88888888';
-  const memberName = 'Socio Update E2E';
-  let memberId = '';
-  const itemName = 'Pelota de Básquet Update E2E';
-
-  test('debe permitir actualizar el estado de un préstamo de equipo a Devuelto', async ({ page }) => {
-    // 1. Sembrar un socio real vía API
-    const memberRes = await page.request.post(`${API}/socios`, {
+/**
+ * Tests E2E Full-Stack para Préstamos de Equipamiento.
+ * Playwright interactúa con el frontend en localhost:5173 y la API real en localhost:3000.
+ */
+test.describe('Equipment Loans - Full-Stack E2E', () => {
+  const dni = '99991111';
+  const memberName = 'Socio Préstamo E2E';
+  
+  test.beforeAll(async ({ request }) => {
+    // Sembramos un socio real vía API para que exista en el combobox de los tests
+    await request.post(`${API}/socios`, {
       data: {
         name: memberName,
         dni,
-        email: `update-${dni}@e2e.com`,
+        email: `prestamo-${dni}@e2e.com`,
         birthdate: '1990-01-01',
         category: 'Pleno',
       },
