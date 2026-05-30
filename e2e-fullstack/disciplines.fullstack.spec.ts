@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:3001/api/v1';
+const API = 'http://localhost:3000/api/v1';
 
 /**
  * E2E full-stack del ALTA de sanciones.
@@ -56,14 +56,89 @@ test.describe('Disciplines Alta - Full-Stack E2E', () => {
     await expect(page.getByText('Conducta antideportiva E2E')).toBeVisible({ timeout: 10000 });
 
     // 7. Probar el feature de filtro: buscar al socio y ver el resumen
-// ... (código anterior)
-
-// 7. Probar el feature de filtro: buscar al socio y ver el resumen
     await page.getByPlaceholder('Filtrar: buscar socio por nombre o DNI').fill('Socio Alta');
     const filterResult = page.locator('p.css-1umixiy', { hasText: memberName });
     await expect(filterResult).toBeVisible();
     await filterResult.click();
     await expect(page.getByText('Sanciones totales')).toBeVisible();
     await expect(page.getByText('Vigentes')).toBeVisible();
+  });
+});
+
+test.describe('Disciplines Update - Full-Stack E2E', () => {
+  const dni = '70020002';
+  const memberName = 'Socio Update E2E';
+
+  test('edita el motivo de una sanción y ve el cambio en la tabla', async ({ page }) => {
+    // 1. Sembrar socio vía API
+    const memberRes = await page.request.post(`${API}/socios`, {
+      data: { name: memberName, dni, email: `upd-${dni}@e2e.com`, birthdate: '1990-01-01', category: 'Pleno' },
+    });
+    const member = (await memberRes.json()).data;
+
+    // 2. Sembrar una sanción para ese socio vía API
+    await page.request.post(`${API}/disciplines`, {
+      data: {
+        reason: 'Motivo Original E2E',
+        start_date: '2030-01-01T00:00:00.000Z',
+        end_date: '2030-02-01T00:00:00.000Z',
+        is_total_suspension: false,
+        member_id: member.id,
+      },
+    });
+
+    // 3. Ir a la vista
+    await page.goto('/disciplines');
+    await expect(page.getByText('Motivo Original E2E')).toBeVisible({ timeout: 10000 });
+
+    // 4. Abrir el modal de edición (IconButton con aria-label "Editar sanción")
+    await page.getByRole('button', { name: 'Editar sanción' }).first().click();
+    await expect(page.getByText('Editar Sanción')).toBeVisible();
+
+    // 5. Cambiar el motivo y guardar
+    await page.getByPlaceholder('Ej. Conducta antideportiva').fill('Motivo Editado E2E');
+    await page.getByRole('button', { name: 'Guardar Cambios' }).click();
+    await expect(page.getByRole('button', { name: 'Guardar Cambios' })).toBeHidden();
+
+    // 6. Verificar el cambio (y que el viejo ya no está)
+    await expect(page.getByText('Motivo Editado E2E')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Motivo Original E2E')).toBeHidden();
+  });
+});
+
+test.describe('Disciplines Delete - Full-Stack E2E', () => {
+  const dni = '70030003';
+  const memberName = 'Socio Delete E2E';
+
+  test('elimina una sanción desde la UI y desaparece de la tabla', async ({ page }) => {
+    // 1. Sembrar socio
+    const memberRes = await page.request.post(`${API}/socios`, {
+      data: { name: memberName, dni, email: `del-${dni}@e2e.com`, birthdate: '1990-01-01', category: 'Pleno' },
+    });
+    const member = (await memberRes.json()).data;
+
+    // 2. Sembrar sanción
+    await page.request.post(`${API}/disciplines`, {
+      data: {
+        reason: 'Sancion A Borrar E2E',
+        start_date: '2030-01-01T00:00:00.000Z',
+        end_date: '2030-02-01T00:00:00.000Z',
+        is_total_suspension: false,
+        member_id: member.id,
+      },
+    });
+
+    // 3. Ir a la vista
+    await page.goto('/disciplines');
+    await expect(page.getByText('Sancion A Borrar E2E')).toBeVisible({ timeout: 10000 });
+
+    // 4. Aceptar automáticamente el window.confirm ANTES de clickear
+    page.on('dialog', (dialog) => dialog.accept());
+
+    // 5. Clic en eliminar (IconButton con aria-label "Eliminar sanción")
+    await page.getByRole('button', { name: 'Eliminar sanción' }).first().click();
+
+    // 6. Verificar que desaparece
+    await expect(page.getByText('Sancion A Borrar E2E')).toBeHidden({ timeout: 10000 });
   });
 });
