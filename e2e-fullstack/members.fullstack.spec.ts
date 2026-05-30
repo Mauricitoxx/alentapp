@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
  * Tests E2E Full-Stack para la vista de Miembros.
  * NO hay ningún mock de red. Playwright interactúa con:
  *   - El Frontend React en http://localhost:5173
- *   - La API Fastify real en http://localhost:3001
+ *   - La API Fastify real en http://localhost:3000
  *   - La base de datos PostgreSQL de test (alentapp_test_db)
  *
  * El global-setup se encarga de limpiar la DB antes de correr la suite,

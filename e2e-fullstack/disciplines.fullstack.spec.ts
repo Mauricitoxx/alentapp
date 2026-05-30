@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:3001/api/v1';
+const API = 'http://localhost:3000/api/v1';
 
 /**
  * E2E full-stack del ALTA de sanciones.
