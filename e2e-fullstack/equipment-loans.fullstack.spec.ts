@@ -1,33 +1,79 @@
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:3001/api/v1';
+const API = 'http://localhost:3000/api/v1';
 
-test.describe('Equipment Loans Update - Full-Stack E2E', () => {
-  const dni = '88888888';
-  const memberName = 'Socio Update E2E';
+/**
+ * Tests E2E Full-Stack para Préstamos de Equipamiento.
+ * Playwright interactúa con el frontend (configurado en baseURL) y la API real en localhost:3000.
+ */
+test.describe('Equipment Loans - Full-Stack E2E', () => {
+  const dni = '99991111';
+  const memberName = 'Socio Préstamo E2E';
   let memberId = '';
-  const itemName = 'Pelota de Básquet Update E2E';
 
-  test('debe permitir actualizar el estado de un préstamo de equipo a Devuelto', async ({ page }) => {
-    // 1. Sembrar un socio real vía API
-    const memberRes = await page.request.post(`${API}/socios`, {
+  test.beforeAll(async ({ request }) => {
+    // Sembramos un socio real vía API para que exista en el combobox de los tests
+    const memberRes = await request.post(`${API}/socios`, {
       data: {
         name: memberName,
         dni,
-        email: `update-${dni}@e2e.com`,
+        email: `prestamo-${dni}@e2e.com`,
         birthdate: '1990-01-01',
         category: 'Pleno',
       },
     });
-    expect(memberRes.ok()).toBeTruthy();
-    const memberData = await memberRes.json();
-    memberId = memberData.data.id;
+    
+    // Guardamos el ID del socio creado porque el test de Update lo necesita para crear el préstamo
+    if (memberRes.ok()) {
+      const memberData = await memberRes.json();
+      memberId = memberData.data.id;
+    }
+  });
 
-    // 2. Sembrar un préstamo real vía API asociado a ese socio
+  test('debe permitir dar de alta un préstamo de equipo desde la UI', async ({ page }) => {
+    const itemName = 'Raqueta de Tenis Alta E2E';
+
+    await page.goto('/equipment-loans');
+
+    // 1. Alta del préstamo
+    const btnAgregar = page.getByRole('button', { name: /Nuevo Préstamo/i });
+    await expect(btnAgregar).toBeVisible();
+    await btnAgregar.click();
+
+    await expect(page.getByText('Registrar Nuevo Préstamo')).toBeVisible();
+
+    // Seleccionamos el socio del Combobox
+    const comboboxInput = page.getByRole('combobox');
+    await comboboxInput.click();
+    await page.keyboard.type(memberName);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+
+    await page.getByPlaceholder('Ej. Raqueta de Tenis').fill(itemName);
+    
+    // Llenar fecha de devolución (un día después)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateString = tomorrow.toISOString().slice(0, 16); // Formato YYYY-MM-DDThh:mm
+    await page.locator('input[type="datetime-local"]').fill(dateString);
+
+    const btnCrear = page.getByRole('button', { name: 'Crear Préstamo' });
+    await btnCrear.click();
+
+    // Verificar que se creó y aparece en la tabla
+    const row = page.locator('tr', { hasText: itemName }).first();
+    await expect(row).toBeVisible({ timeout: 10000 });
+    await expect(row.getByText('Loaned')).toBeVisible();
+  });
+
+  test('debe permitir actualizar el estado de un préstamo de equipo a Devuelto', async ({ page, request }) => {
+    const itemName = 'Pelota de Básquet Update E2E';
+
+    // 1. Sembrar un préstamo real vía API asociado al socio creado en beforeAll
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const loanRes = await page.request.post(`${API}/equipment-loans`, {
+    const loanRes = await request.post(`${API}/equipment-loans`, {
       data: {
         item_name: itemName,
         due_date: tomorrow.toISOString(),
@@ -36,30 +82,30 @@ test.describe('Equipment Loans Update - Full-Stack E2E', () => {
     });
     expect(loanRes.ok()).toBeTruthy();
 
-    // 3. Ir a la vista de préstamos de equipos
+    // 2. Ir a la vista de préstamos de equipos
     await page.goto('/equipment-loans');
 
-    // 4. Verificar que el préstamo aparece en la tabla con estado 'Loaned'
+    // 3. Verificar que el préstamo sembrado aparece en la tabla con estado 'Loaned'
     const row = page.locator('tr', { hasText: itemName }).first();
     await expect(row).toBeVisible({ timeout: 10000 });
     await expect(row.getByText('Loaned')).toBeVisible();
 
-    // 5. Hacer clic en el botón de Editar (icono de lápiz) en esa fila
+    // 4. Hacer clic en el botón de Editar (icono de lápiz) en esa fila
     await row.getByRole('button').first().click();
 
-    // 6. Verificar que se abrió el modal de edición
+    // 5. Verificar que se abrió el modal de edición
     await expect(page.getByText('Editar Préstamo')).toBeVisible();
 
-    // 7. Cambiar el estado a 'Returned'
+    // 6. Cambiar el estado a 'Returned'
     await page.locator('select').selectOption('Returned');
 
-    // 8. Guardar los cambios
+    // 7. Guardar los cambios
     await page.getByRole('button', { name: 'Guardar Cambios' }).click();
 
-    // 9. Verificar que el modal se cerró
+    // 8. Verificar que el modal se cerró
     await expect(page.getByText('Editar Préstamo')).toBeHidden();
 
-    // 10. Verificar que en la tabla ahora dice 'Returned' en vez de 'Loaned'
+    // 9. Verificar que en la tabla ahora dice 'Returned' en vez de 'Loaned'
     await expect(row.getByText('Returned')).toBeVisible();
   });
 });
