@@ -2,7 +2,7 @@ import { test, expect as playwrightExpect } from '@playwright/test';
 
 test.describe('Lockers Full-Stack E2E', () => {
 
- // =========================================================================
+  // =========================================================================
   // ESCENARIO 1: ALTA DE CASILLERO (¡Ahora Dinámico!)
   // =========================================================================
   test('debe crear un casillero real desde la interfaz y mostrarlo en la tabla', async ({ page }) => {
@@ -18,8 +18,8 @@ test.describe('Lockers Full-Stack E2E', () => {
 
     // 🌟 TRUCO DINÁMICO: Genera un número aleatorio entre 100 y 999 en cada ejecución
     const numeroAleatorio = Math.floor(Math.random() * (999 - 100 + 1)) + 100;
-    const numeroLocker = numeroAleatorio.toString(); 
-    
+    const numeroLocker = numeroAleatorio.toString();
+
     const ubicacionLocker = `Pasillo Central E2E - ${numeroLocker}`; // Le sumamos el número a la ubicación para identificarlo al toque
 
     // 4. Llenamos usando tus placeholders exactos
@@ -62,7 +62,7 @@ test.describe('Lockers Delete - Full-Stack E2E', () => {
 
     // 4. Localizamos la fila exacta usando nuestro texto dinámico e irrepetible
     const filaLocker = page.locator('tr', { hasText: ubicacionDinamica }).first();
-      
+
     // 5. Hacemos clic en el tacho de basura de ESA fila específica
     await filaLocker.locator('button').last().click();
 
@@ -78,15 +78,15 @@ test.describe('Lockers Delete - Full-Stack E2E', () => {
   // =========================================================================
   // ESCENARIO 2: MODIFICACIÓN DE CASILLERO (Adaptado a tus pantallas reales)
   // =========================================================================
- test('debe editar un casillero existente desde la interfaz y ver los cambios reflejados', async ({ page }) => {
+  test('debe editar un casillero existente desde la interfaz y ver los cambios reflejados', async ({ page }) => {
     // 1. Navegamos a tu pantalla de Gestión de Casilleros
     await page.goto('/lockers');
 
     // 🌟 NUEVA ESTRATEGIA: Buscamos la fila que dice "66" (el casillero disponible de tu captura)
     // y hacemos clic en el botón de edición (lápiz) que está ADENTRO de esa fila específica.
     const filaCasillero = page.locator('tr').filter({ hasText: '2' });
-    const btnEditar = filaCasillero.getByRole('button').first(); 
-    
+    const btnEditar = filaCasillero.getByRole('button').first();
+
     await playwrightExpect(btnEditar).toBeVisible();
     await btnEditar.click();
 
@@ -95,7 +95,7 @@ test.describe('Lockers Delete - Full-Stack E2E', () => {
 
     const nuevaUbicacion = 'pasillo demujer Modificado E2E';
 
-      // Buscamos el segundo input de la pantalla (.nth(1) porque empieza a contar desde 0)
+    // Buscamos el segundo input de la pantalla (.nth(1) porque empieza a contar desde 0)
     const inputUbicacion = page.locator('input[type="text"], input:not([type])').nth(1);
     await inputUbicacion.click();
 
