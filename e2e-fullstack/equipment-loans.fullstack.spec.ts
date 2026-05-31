@@ -157,4 +157,3 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
     await expect(page.locator('tr', { hasText: itemNameDelete })).toBeHidden({ timeout: 5000 });
   });
 });
-});
