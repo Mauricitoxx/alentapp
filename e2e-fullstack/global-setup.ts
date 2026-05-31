@@ -3,8 +3,8 @@
  *
  * Docker Compose (docker-compose.e2e.yml) se encarga de levantar:
  *   - db-test    → PostgreSQL en localhost:5433
- *   - api-test   → Fastify en localhost:3001
- *   - web-test   → Vite en localhost:5174
+ *   - api-test   → Fastify en localhost:3000
+ *   - web-test   → Vite en localhost:5173
  *
  * Este script solo:
  *   1. Espera a que la API esté respondiendo (poll)
@@ -13,7 +13,7 @@
 import type { FullConfig } from '@playwright/test';
 import pg from 'pg';
 
-const API_URL = 'http://localhost:3001';
+const API_URL = 'http://localhost:3000';
 const DB_URL = 'postgresql://admin:password123@localhost:5433/alentapp_test_db';
 const MAX_WAIT_MS = 60_000;
 const POLL_INTERVAL_MS = 2_000;

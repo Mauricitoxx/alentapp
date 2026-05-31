@@ -1,6 +1,6 @@
 /**
  * Script de arranque de la API para tests E2E Full-Stack.
- * Lee el .env.test para conectar a la DB de test y arranca en el puerto 3001.
+ * Lee el .env.test para conectar a la DB de test y arranca en el puerto 3000.
  */
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -24,7 +24,7 @@ try {
     process.exit(1);
 }
 
-const port = parseInt(process.env.PORT || '3001', 10);
+const port = parseInt(process.env.PORT || '3000', 10);
 const server = buildApp();
 
 await server.listen({ port, host: '0.0.0.0' });
