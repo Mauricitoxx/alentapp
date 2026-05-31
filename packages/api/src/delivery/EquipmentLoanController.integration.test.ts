@@ -3,7 +3,7 @@ import { buildApp } from '../app.js';
 import type { FastifyInstance } from 'fastify';
 
 // 1. Creamos el mock con todas las funciones
-const { mockEquipmentLoanRepo } = vi.hoisted(() => ({
+const { mockEquipmentLoanRepo, mockMemberRepo } = vi.hoisted(() => ({
     mockEquipmentLoanRepo: {
         findAll: vi.fn(),
         create: vi.fn(),
@@ -11,12 +11,60 @@ const { mockEquipmentLoanRepo } = vi.hoisted(() => ({
         update: vi.fn(),
         delete: vi.fn(),
     },
+    mockMemberRepo: {
+        findById: vi.fn(),
+    }
 }));
 
 // 2. Interceptamos el archivo real de forma absoluta para que Vitest use el mock
 vi.mock('../infrastructure/PostgresEquipmentLoanRepository', () => ({
     PostgresEquipmentLoanRepository: class { constructor() { return mockEquipmentLoanRepo; } },
 }));
+
+vi.mock('../infrastructure/PostgresMemberRepository', () => ({
+    PostgresMemberRepository: class { constructor() { return mockMemberRepo; } },
+}));
+
+describe('EquipmentLoanController integration - creación (POST)', () => {
+    let app: FastifyInstance;
+
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        app = await buildApp();
+        await app.ready();
+    });
+
+    afterEach(async () => {
+        await app.close();
+    });
+
+    const newLoanPayload = {
+        item_name: 'Pelota de Fútbol',
+        member_id: 'member-123',
+        due_date: '2030-01-01T10:00:00Z'
+    };
+
+    it('1. devuelve 201 y crea el préstamo cuando los datos son válidos', async () => {
+        mockMemberRepo.findById.mockResolvedValueOnce({ id: 'member-123', status: 'Activo', category: 'Pleno' });
+        
+        mockEquipmentLoanRepo.create.mockResolvedValueOnce({
+            id: 'loan-123',
+            ...newLoanPayload,
+            status: 'Loaned',
+            loan_date: new Date().toISOString()
+        });
+
+        const response = await app.inject({
+            method: 'POST',
+            url: '/api/v1/equipment-loans',
+            payload: newLoanPayload,
+        });
+
+        expect(response.statusCode).toBe(201);
+        expect(response.json().data.item_name).toBe('Pelota de Fútbol');
+        expect(mockEquipmentLoanRepo.create).toHaveBeenCalled();
+    });
+});
 
 describe('EquipmentLoanController integration - actualización (PUT)', () => {
     let app: FastifyInstance;
