@@ -128,3 +128,75 @@ describe('EquipmentLoanController integration - actualización (PUT)', () => {
         expect(response.json().error).toContain('Fecha de devolucion invalida');
     });
 });
+
+describe('EquipmentLoanController integration - eliminación (DELETE)', () => {
+    let app: FastifyInstance;
+
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        app = await buildApp();
+        await app.ready();
+    });
+
+    afterEach(async () => {
+        await app.close();
+    });
+
+    const existingLoan = {
+        id: 'loan-123',
+        item_name: 'Pelota de Fútbol',
+        status: 'Loaned',
+        loan_date: '2026-05-27T10:00:00Z',
+        due_date: '2026-05-28T10:00:00Z',
+        member_id: 'member-123'
+    };
+
+    // ------------------------------------------------------------------------
+    // TEST 1: CAMINO FELIZ (204 No Content)
+    // ------------------------------------------------------------------------
+    it('1. devuelve 204 y elimina el préstamo cuando es válido y está en Loaned', async () => {
+        mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
+        mockEquipmentLoanRepo.delete.mockResolvedValueOnce();
+
+        const response = await app.inject({
+            method: 'DELETE',
+            url: '/api/v1/equipment-loans/loan-123',
+        });
+
+        expect(response.statusCode).toBe(204);
+        expect(response.payload).toBe('');
+        expect(mockEquipmentLoanRepo.delete).toHaveBeenCalledWith('loan-123');
+    });
+
+    // ------------------------------------------------------------------------
+    // TEST 2: REGLA DE NEGOCIO / NO EXISTE (404 Not Found)
+    // ------------------------------------------------------------------------
+    it('2. devuelve 404 cuando el préstamo a eliminar no existe', async () => {
+        mockEquipmentLoanRepo.findById.mockResolvedValueOnce(null);
+
+        const response = await app.inject({
+            method: 'DELETE',
+            url: '/api/v1/equipment-loans/loan-999',
+        });
+
+        expect(response.statusCode).toBe(404);
+        expect(response.json().error).toContain('El préstamo no existe');
+        expect(mockEquipmentLoanRepo.delete).not.toHaveBeenCalled();
+    });
+
+    // ------------------------------------------------------------------------
+    // TEST 3: REGLA DE NEGOCIO / ESTADO INVÁLIDO (400 Bad Request)
+    // ------------------------------------------------------------------------
+    it('3. devuelve 400 cuando el préstamo ya fue devuelto', async () => {
+        mockEquipmentLoanRepo.findById.mockResolvedValueOnce({ ...existingLoan, status: 'Returned' });
+
+        const response = await app.inject({
+            method: 'DELETE',
+            url: '/api/v1/equipment-loans/loan-123',
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(response.json().error).toContain('No se puede eliminar un préstamo con historial de devolución');
+        expect(mockEquipmentLoanRepo.delete).not.toHaveBeenCalled();
+    });
+});

@@ -84,6 +84,8 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
 
     // 2. Ir a la vista de préstamos de equipos
     await page.goto('http://localhost:5173/equipment-loans');
+    // 3. Ir a la vista de préstamos de equipos
+    await page.goto('http://localhost:5173/equipment-loans');
 
     // 3. Verificar que el préstamo sembrado aparece en la tabla con estado 'Loaned'
     const row = page.locator('tr', { hasText: itemName }).first();
@@ -107,5 +109,51 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
 
     // 9. Verificar que en la tabla ahora dice 'Returned' en vez de 'Loaned'
     await expect(row.getByText('Returned')).toBeVisible();
+  });
+
+  test('debe permitir eliminar un préstamo de equipo en estado Loaned', async ({ page }) => {
+    // 1. Sembrar socio vía API
+    const memberRes = await page.request.post(`${API}/socios`, {
+      data: {
+        name: 'Socio Delete E2E',
+        dni: '77777777',
+        email: 'delete-7777@e2e.com',
+        birthdate: '1995-01-01',
+        category: 'Pleno',
+      },
+    });
+    expect(memberRes.ok()).toBeTruthy();
+    const memberData = await memberRes.json();
+    const deleteMemberId = memberData.data.id;
+
+    // 2. Sembrar préstamo vía API
+    const itemNameDelete = 'Raqueta de Tenis Delete E2E';
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const loanRes = await page.request.post(`${API}/equipment-loans`, {
+      data: {
+        item_name: itemNameDelete,
+        due_date: tomorrow.toISOString(),
+        member_id: deleteMemberId,
+      },
+    });
+    expect(loanRes.ok()).toBeTruthy();
+
+    // 3. Navegar a préstamos
+    await page.goto('http://localhost:5173/equipment-loans');
+
+    // 4. Buscar la fila y darle al botón de eliminar (el de la papelera / LuTrash, que es el segundo botón en la celda o el de clase destructivo)
+    const row = page.locator('tr', { hasText: itemNameDelete }).first();
+    await expect(row).toBeVisible({ timeout: 10000 });
+
+    // Configurar listener para aceptar el alert nativo (window.confirm)
+    page.on('dialog', dialog => dialog.accept());
+
+    // Hacer click en el basurero (suponiendo que es el último botón de la fila)
+    await row.getByRole('button').last().click();
+
+    // 5. Verificar que la fila ya no existe en la tabla
+    await expect(page.locator('tr', { hasText: itemNameDelete })).toBeHidden({ timeout: 5000 });
   });
 });
