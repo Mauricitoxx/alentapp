@@ -58,16 +58,6 @@ describe('LockerController Integration Tests', () => {
                 member_id: null 
             });
 
-
-        it('1. devuelve 201 y crea el casillero cuando los datos son válidos', async () => {
-            mockLockerRepo.findByNumber.mockResolvedValueOnce(null);
-            
-            mockLockerRepo.create.mockResolvedValueOnce({ 
-                id: 'locker-1', 
-                ...validBody, 
-                member_id: null 
-            });
-
             const response = await app.inject({
                 method: 'POST',
                 url: '/api/v1/lockers',
@@ -114,11 +104,8 @@ describe('LockerController Integration Tests', () => {
         };
 
         it('3. devuelve 200 y el casillero modificado si los datos son correctos', async () => {
-           
             mockLockerRepo.findById.mockResolvedValueOnce({ id: 'locker-1', number: 14, location: 'Vestuario Mujeres', status: 'Available', member_id: null });
-          
             mockLockerRepo.findByNumber.mockResolvedValueOnce(null);
-            
             mockLockerRepo.update.mockResolvedValueOnce({ id: 'locker-1', ...validUpdateBody, member_id: null });
 
             const response = await app.inject({
@@ -130,24 +117,9 @@ describe('LockerController Integration Tests', () => {
             expect(response.statusCode).toBe(200);
             expect(response.json().data.number).toBe(15);
             expect(mockLockerRepo.update).toHaveBeenCalled();
-
-            mockLockerRepo.create.mockRejectedValueOnce(
-                new Error('Ya existe un casillero con ese número')
-            );
-
-            const response = await app.inject({
-                method: 'POST',
-                url: '/api/v1/lockers',
-                payload: validBody,
-            });
-
-            expect(response.statusCode).toBe(409);
-            expect(response.json().error).toContain('Ya existe un casillero');
         });
-    });
 
         it('4. devuelve 400 si se intenta cambiar el estado a Maintenance con un socio asignado', async () => {
-            
             mockLockerRepo.findById.mockResolvedValueOnce({ id: 'locker-1', number: 14, location: 'Vestuario', status: 'Available', member_id: null });
 
             const response = await app.inject({
@@ -162,40 +134,13 @@ describe('LockerController Integration Tests', () => {
             expect(response.statusCode).toBe(400);
             expect(response.json().error).toContain('Maintenance');
             expect(mockLockerRepo.update).not.toHaveBeenCalled();
-    // =========================================================================
-    // BLOQUE 2: MODIFICACIÓN DE CASILLEROS (PUT)
-    // =========================================================================
-    describe('LockerController integration - modificación (PUT)', () => {
-        const validUpdateBody = {
-            number: 15,
-            location: 'Vestuario Mujeres Modificado',
-            status: 'Available'
-        };
-
-        it('3. devuelve 200 y el casillero modificado si los datos son correctos', async () => {
-            // Simulamos que el casillero actual existe en la DB
-            mockLockerRepo.findById.mockResolvedValueOnce({ id: 'locker-1', number: 14, location: 'Vestuario Mujeres', status: 'Available', member_id: null });
-            // Fingimos que no choca con duplicados al buscar el nuevo número
-            mockLockerRepo.findByNumber.mockResolvedValueOnce(null);
-            // Retorno exitoso simulado del repositorio
-            mockLockerRepo.update.mockResolvedValueOnce({ id: 'locker-1', ...validUpdateBody, member_id: null });
-
-            const response = await app.inject({
-                method: 'PUT',
-                url: '/api/v1/lockers/locker-1',
-                payload: validUpdateBody,
-            });
-
-            expect(response.statusCode).toBe(200);
-            expect(response.json().data.number).toBe(15);
-            expect(mockLockerRepo.update).toHaveBeenCalled();
         });
     });
-   // =========================================================================
+
+    // =========================================================================
     // BLOQUE 3: ELIMINACIÓN DE CASILLEROS (DELETE)
     // =========================================================================
     describe('LockerController integration - eliminación (DELETE)', () => {
-
         it('5. devuelve 204 cuando el casillero existe, está vacío y se elimina con éxito', async () => {
             const mockLockerClean = {
                 id: 'locker-a-eliminar',
@@ -213,7 +158,6 @@ describe('LockerController Integration Tests', () => {
                 url: '/api/v1/lockers/locker-a-eliminar',
             });
 
-            // Ajustado a 204 No Content que es lo que envía tu API real
             expect(response.statusCode).toBe(204);
             expect(mockLockerRepo.delete).toHaveBeenCalledWith('locker-a-eliminar');
         });
@@ -235,25 +179,8 @@ describe('LockerController Integration Tests', () => {
             });
 
             expect(response.statusCode).toBe(400);
-            // Evitamos el .toContain si la estructura del error varía
             expect(response.body).toBeDefined(); 
             expect(mockLockerRepo.delete).not.toHaveBeenCalled();
-        it('4. devuelve 400 si se intenta cambiar el estado a Maintenance con un socio asignado', async () => {
-            // El casillero existe pero el payload viola la regla crítica TDD-011
-            mockLockerRepo.findById.mockResolvedValueOnce({ id: 'locker-1', number: 14, location: 'Vestuario', status: 'Available', member_id: null });
-
-            const response = await app.inject({
-                method: 'PUT',
-                url: '/api/v1/lockers/locker-1',
-                payload: {
-                    status: 'Maintenance',
-                    member_id: 'socio-123'
-                },
-            });
-
-            expect(response.statusCode).toBe(400);
-            expect(response.json().error).toContain('Maintenance');
-            expect(mockLockerRepo.update).not.toHaveBeenCalled();
         });
     });
 });
