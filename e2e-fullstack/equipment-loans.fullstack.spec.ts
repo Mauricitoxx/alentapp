@@ -22,7 +22,7 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
         category: 'Pleno',
       },
     });
-    
+
     // Guardamos el ID del socio creado porque el test de Update lo necesita para crear el préstamo
     if (memberRes.ok()) {
       const memberData = await memberRes.json();
@@ -33,7 +33,7 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
   test('debe permitir dar de alta un préstamo de equipo desde la UI', async ({ page }) => {
     const itemName = 'Raqueta de Tenis Alta E2E';
 
-    await page.goto('/equipment-loans');
+    await page.goto('http://localhost:5173/equipment-loans');
 
     // 1. Alta del préstamo
     const btnAgregar = page.getByRole('button', { name: /Nuevo Préstamo/i });
@@ -43,14 +43,14 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
     await expect(page.getByText('Registrar Nuevo Préstamo')).toBeVisible();
 
     // Seleccionamos el socio del Combobox
-    const comboboxInput = page.getByRole('combobox');
-    await comboboxInput.click();
+    const socioField = page.getByRole('textbox', { name: 'Socio' });
+    await socioField.click();
     await page.keyboard.type(memberName);
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
 
     await page.getByPlaceholder('Ej. Raqueta de Tenis').fill(itemName);
-    
+
     // Llenar fecha de devolución (un día después)
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -72,7 +72,7 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
     // 1. Sembrar un préstamo real vía API asociado al socio creado en beforeAll
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     const loanRes = await request.post(`${API}/equipment-loans`, {
       data: {
         item_name: itemName,
@@ -83,7 +83,7 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
     expect(loanRes.ok()).toBeTruthy();
 
     // 2. Ir a la vista de préstamos de equipos
-    await page.goto('/equipment-loans');
+    await page.goto('http://localhost:5173/equipment-loans');
 
     // 3. Verificar que el préstamo sembrado aparece en la tabla con estado 'Loaned'
     const row = page.locator('tr', { hasText: itemName }).first();
