@@ -37,7 +37,7 @@ test.describe('Equipment Loans Update - Full-Stack E2E', () => {
     expect(loanRes.ok()).toBeTruthy();
 
     // 3. Ir a la vista de préstamos de equipos
-    await page.goto('/equipment-loans');
+    await page.goto('http://localhost:5173/equipment-loans');
 
     // 4. Verificar que el préstamo aparece en la tabla con estado 'Loaned'
     const row = page.locator('tr', { hasText: itemName }).first();
@@ -93,7 +93,7 @@ test.describe('Equipment Loans Update - Full-Stack E2E', () => {
     expect(loanRes.ok()).toBeTruthy();
 
     // 3. Navegar a préstamos
-    await page.goto('/equipment-loans');
+    await page.goto('http://localhost:5173/equipment-loans');
 
     // 4. Buscar la fila y darle al botón de eliminar (el de la papelera / LuTrash, que es el segundo botón en la celda o el de clase destructivo)
     const row = page.locator('tr', { hasText: itemNameDelete }).first();
