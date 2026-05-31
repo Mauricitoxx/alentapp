@@ -6,7 +6,7 @@ test.describe('Lockers Full-Stack E2E', () => {
   // ESCENARIO 1: ALTA DE CASILLERO (¡Ahora Dinámico!)
   // =========================================================================
   test('debe crear un casillero real desde la interfaz y mostrarlo en la tabla', async ({ page }) => {
-    await page.goto('http://localhost:5173/lockers');
+    await page.goto('/lockers');
 
     // 2. Hacemos clic en tu botón azul "+ Agregar Casillero"
     const btnAgregar = page.getByRole('button', { name: /Agregar Casillero/i });
@@ -48,7 +48,7 @@ test.describe('Lockers Delete - Full-Stack E2E', () => {
     const ubicacionDinamica = `Pasillo E2E - ${numeroAleatorio}`;
 
     // 1. Primero navegamos para crear el casillero en esta misma ejecución
-    await page.goto('http://localhost:5173/lockers');
+    await page.goto('/lockers');
 
     // 2. Flujo rápido de Alta para asegurarnos de que el casillero SÍ exista antes de borrarlo
     const btnAgregar = page.getByRole('button', { name: /Agregar Casillero/i });
@@ -80,7 +80,7 @@ test.describe('Lockers Delete - Full-Stack E2E', () => {
   // =========================================================================
  test('debe editar un casillero existente desde la interfaz y ver los cambios reflejados', async ({ page }) => {
     // 1. Navegamos a tu pantalla de Gestión de Casilleros
-    await page.goto('http://localhost:5173/lockers');
+    await page.goto('/lockers');
 
     // 🌟 NUEVA ESTRATEGIA: Buscamos la fila que dice "66" (el casillero disponible de tu captura)
     // y hacemos clic en el botón de edición (lápiz) que está ADENTRO de esa fila específica.
