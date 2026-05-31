@@ -5,10 +5,10 @@ import type { FastifyInstance } from 'fastify';
 // 1. Creamos el mock con todas las funciones
 const { mockEquipmentLoanRepo } = vi.hoisted(() => ({
     mockEquipmentLoanRepo: {
-        findAll: vi.fn(), 
-        create: vi.fn(), 
-        findById: vi.fn(), 
-        update: vi.fn(), 
+        findAll: vi.fn(),
+        create: vi.fn(),
+        findById: vi.fn(),
+        update: vi.fn(),
         delete: vi.fn(),
     },
 }));
@@ -45,11 +45,11 @@ describe('EquipmentLoanController integration - actualización (PUT)', () => {
     // ------------------------------------------------------------------------
     it('1. devuelve 200 y actualiza el préstamo cuando los datos son válidos', async () => {
         mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
-        
+
         const updatePayload = { status: 'Returned', due_date: '2026-06-01T10:00:00Z' };
-        mockEquipmentLoanRepo.update.mockResolvedValueOnce({ 
-            ...existingLoan, 
-            ...updatePayload 
+        mockEquipmentLoanRepo.update.mockResolvedValueOnce({
+            ...existingLoan,
+            ...updatePayload
         });
 
         const response = await app.inject({
@@ -156,7 +156,7 @@ describe('EquipmentLoanController integration - eliminación (DELETE)', () => {
     // ------------------------------------------------------------------------
     it('1. devuelve 204 y elimina el préstamo cuando es válido y está en Loaned', async () => {
         mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
-        mockEquipmentLoanRepo.delete.mockResolvedValueOnce();
+        mockEquipmentLoanRepo.delete.mockResolvedValueOnce(undefined);
 
         const response = await app.inject({
             method: 'DELETE',
