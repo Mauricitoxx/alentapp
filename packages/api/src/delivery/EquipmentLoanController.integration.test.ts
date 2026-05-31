@@ -1,103 +1,130 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { FastifyInstance } from 'fastify';
-
-// Seteamos una variable de entorno falsa para que no falle la importación de repositorios reales
-vi.hoisted(() => {
-    process.env.DATABASE_URL = 'postgres://dummy:dummy@localhost:5432/dummy';
-});
-
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../app.js';
-import { CreateEquipmentLoanRequest } from '@alentapp/shared';
+import type { FastifyInstance } from 'fastify';
 
-// Mockeamos el repositorio de Préstamos
-vi.mock('../infrastructure/PostgresEquipmentLoanRepository.js', () => {
-    return {
-        PostgresEquipmentLoanRepository: class {
-            async findAll() { return []; }
-            async findById(id: string) { return null; }
-            async create(data: any) { 
-                return { 
-                    id: 'loan-1', 
-                    ...data, 
-                    status: 'Loaned', 
-                    loan_date: new Date().toISOString() 
-                }; 
-            }
-            async update(id: string, data: any) { return { id, ...data }; }
-            async delete(id: string) { return; }
-        }
-    };
-});
+// 1. Creamos el mock con todas las funciones
+const { mockEquipmentLoanRepo } = vi.hoisted(() => ({
+    mockEquipmentLoanRepo: {
+        findAll: vi.fn(), 
+        create: vi.fn(), 
+        findById: vi.fn(), 
+        update: vi.fn(), 
+        delete: vi.fn(),
+    },
+}));
 
-// Mockeamos el repositorio de Socios (Member)
-vi.mock('../infrastructure/PostgresMemberRepository.js', () => {
-    return {
-        PostgresMemberRepository: class {
-            async findAll() { return []; }
-            async findById(id: string) { 
-                // Simulamos que el socio 1 existe y es válido
-                if (id === '1') {
-                    return { id: '1', name: 'Socio Valido', status: 'Activo', category: 'Pleno' };
-                }
-                return null; // Cualquier otro no existe
-            }
-            async findByDni(dni: string) { return null; }
-            async create(data: any) { return data; }
-            async update(id: string, data: any) { return data; }
-            async delete(id: string) { return; }
-        }
-    };
-});
+// 2. Interceptamos el archivo real de forma absoluta para que Vitest use el mock
+vi.mock('../infrastructure/PostgresEquipmentLoanRepository', () => ({
+    PostgresEquipmentLoanRepository: class { constructor() { return mockEquipmentLoanRepo; } },
+}));
 
-describe('EquipmentLoan API Integration Tests', () => {
+describe('EquipmentLoanController integration - actualización (PUT)', () => {
     let app: FastifyInstance;
 
-    beforeAll(async () => {
-        app = buildApp();
-        await app.ready(); // Esperamos a que cargue la app (plugins, rutas, etc)
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        app = await buildApp();
+        await app.ready();
     });
 
-    afterAll(async () => {
+    afterEach(async () => {
         await app.close();
     });
 
-    describe('POST /api/v1/equipment-loans', () => {
-        it('debe retornar 201 y crear el préstamo si los datos son válidos', async () => {
-            const payload: CreateEquipmentLoanRequest = {
-                item_name: 'Pelota de Basquet',
-                due_date: '2026-12-31', // Aseguramos que sea futura
-                member_id: '1' // Socio válido (mockeado arriba)
-            };
+    const existingLoan = {
+        id: 'loan-123',
+        item_name: 'Pelota de Fútbol',
+        status: 'Loaned',
+        loan_date: '2026-05-27T10:00:00Z',
+        due_date: '2026-05-28T10:00:00Z',
+        member_id: 'member-123'
+    };
 
-            const response = await app.inject({
-                method: 'POST',
-                url: '/api/v1/equipment-loans',
-                payload
-            });
-
-            expect(response.statusCode).toBe(201);
-            const body = JSON.parse(response.payload);
-            expect(body.data.item_name).toBe('Pelota de Basquet');
-            expect(body.data.id).toBe('loan-1');
-            expect(body.data.status).toBe('Loaned');
+    // ------------------------------------------------------------------------
+    // TEST 1: CAMINO FELIZ (200 OK)
+    // ------------------------------------------------------------------------
+    it('1. devuelve 200 y actualiza el préstamo cuando los datos son válidos', async () => {
+        mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
+        
+        const updatePayload = { status: 'Returned', due_date: '2026-06-01T10:00:00Z' };
+        mockEquipmentLoanRepo.update.mockResolvedValueOnce({ 
+            ...existingLoan, 
+            ...updatePayload 
         });
 
-        it('debe retornar 404 si el socio solicitado no existe', async () => {
-            const payload: CreateEquipmentLoanRequest = {
-                item_name: 'Conos',
-                due_date: '2026-12-31',
-                member_id: '99' // Socio inexistente
-            };
-
-            const response = await app.inject({
-                method: 'POST',
-                url: '/api/v1/equipment-loans',
-                payload
-            });
-
-            expect(response.statusCode).toBe(404);
-            const body = JSON.parse(response.payload);
-            expect(body.error).toBe('El socio no existe');
+        const response = await app.inject({
+            method: 'PUT',
+            url: '/api/v1/equipment-loans/loan-123',
+            payload: updatePayload,
         });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json().message).toBe('Prestamo actualizado correctamente');
+        expect(response.json().data.status).toBe('Returned');
+        expect(mockEquipmentLoanRepo.update).toHaveBeenCalled();
+    });
+
+    // ------------------------------------------------------------------------
+    // TEST 2: REGLA DE NEGOCIO / NO EXISTE (404 Not Found)
+    // ------------------------------------------------------------------------
+    it('2. devuelve 404 cuando el préstamo no existe', async () => {
+        mockEquipmentLoanRepo.findById.mockResolvedValueOnce(null);
+
+        const response = await app.inject({
+            method: 'PUT',
+            url: '/api/v1/equipment-loans/loan-999',
+            payload: { status: 'Returned' },
+        });
+
+        expect(response.statusCode).toBe(404);
+        expect(response.json().error).toContain('El prestamo no existe');
+    });
+
+    // ------------------------------------------------------------------------
+    // TEST 3: REGLA DE NEGOCIO / ESTADO INVÁLIDO (400 Bad Request)
+    // ------------------------------------------------------------------------
+    it('3. devuelve 400 cuando el estado enviado es inválido', async () => {
+        mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
+
+        const response = await app.inject({
+            method: 'PUT',
+            url: '/api/v1/equipment-loans/loan-123',
+            payload: { status: 'RotoTotalmente' },
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(response.json().error).toContain('Estado de prestamo invalido');
+    });
+
+    // ------------------------------------------------------------------------
+    // TEST 4: REGLA DE NEGOCIO / FECHA DE DEVOLUCIÓN EN EL PASADO (409 Conflict)
+    // ------------------------------------------------------------------------
+    it('4. devuelve 409 cuando la fecha de devolución no es en el futuro', async () => {
+        mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
+
+        const response = await app.inject({
+            method: 'PUT',
+            url: '/api/v1/equipment-loans/loan-123',
+            payload: { due_date: '2020-01-01' },
+        });
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().error).toContain('Fecha de devolucion invalida');
+    });
+
+    // ------------------------------------------------------------------------
+    // TEST 5: REGLA DE NEGOCIO / FECHA DE DEVOLUCIÓN INVÁLIDA (409 Conflict)
+    // ------------------------------------------------------------------------
+    it('5. devuelve 409 cuando la fecha de devolución tiene formato inválido', async () => {
+        mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
+
+        const response = await app.inject({
+            method: 'PUT',
+            url: '/api/v1/equipment-loans/loan-123',
+            payload: { due_date: 'no-es-una-fecha' },
+        });
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().error).toContain('Fecha de devolucion invalida');
     });
 });
