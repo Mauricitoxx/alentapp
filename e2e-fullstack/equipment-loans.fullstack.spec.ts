@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:3000/api/v1';
+const API = 'http://localhost:3001/api/v1';
 
 /**
  * Tests E2E Full-Stack para Préstamos de Equipamiento.
@@ -33,7 +33,7 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
   test('debe permitir dar de alta un préstamo de equipo desde la UI', async ({ page }) => {
     const itemName = 'Raqueta de Tenis Alta E2E';
 
-    await page.goto('http://localhost:5173/equipment-loans');
+    await page.goto('/equipment-loans');
 
     // 1. Alta del préstamo
     const btnAgregar = page.getByRole('button', { name: /Nuevo Préstamo/i });
@@ -83,9 +83,7 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
     expect(loanRes.ok()).toBeTruthy();
 
     // 2. Ir a la vista de préstamos de equipos
-    await page.goto('http://localhost:5173/equipment-loans');
-    // 3. Ir a la vista de préstamos de equipos
-    await page.goto('http://localhost:5173/equipment-loans');
+    await page.goto('/equipment-loans');
 
     // 3. Verificar que el préstamo sembrado aparece en la tabla con estado 'Loaned'
     const row = page.locator('tr', { hasText: itemName }).first();
@@ -141,7 +139,7 @@ test.describe('Equipment Loans - Full-Stack E2E', () => {
     expect(loanRes.ok()).toBeTruthy();
 
     // 3. Navegar a préstamos
-    await page.goto('http://localhost:5173/equipment-loans');
+    await page.goto('/equipment-loans');
 
     // 4. Buscar la fila y darle al botón de eliminar (el de la papelera / LuTrash, que es el segundo botón en la celda o el de clase destructivo)
     const row = page.locator('tr', { hasText: itemNameDelete }).first();

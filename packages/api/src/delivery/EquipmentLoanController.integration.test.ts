@@ -3,20 +3,68 @@ import { buildApp } from '../app.js';
 import type { FastifyInstance } from 'fastify';
 
 // 1. Creamos el mock con todas las funciones
-const { mockEquipmentLoanRepo } = vi.hoisted(() => ({
+const { mockEquipmentLoanRepo, mockMemberRepo } = vi.hoisted(() => ({
     mockEquipmentLoanRepo: {
-        findAll: vi.fn(), 
-        create: vi.fn(), 
-        findById: vi.fn(), 
-        update: vi.fn(), 
+        findAll: vi.fn(),
+        create: vi.fn(),
+        findById: vi.fn(),
+        update: vi.fn(),
         delete: vi.fn(),
     },
+    mockMemberRepo: {
+        findById: vi.fn(),
+    }
 }));
 
 // 2. Interceptamos el archivo real de forma absoluta para que Vitest use el mock
 vi.mock('../infrastructure/PostgresEquipmentLoanRepository', () => ({
     PostgresEquipmentLoanRepository: class { constructor() { return mockEquipmentLoanRepo; } },
 }));
+
+vi.mock('../infrastructure/PostgresMemberRepository', () => ({
+    PostgresMemberRepository: class { constructor() { return mockMemberRepo; } },
+}));
+
+describe('EquipmentLoanController integration - creación (POST)', () => {
+    let app: FastifyInstance;
+
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        app = await buildApp();
+        await app.ready();
+    });
+
+    afterEach(async () => {
+        await app.close();
+    });
+
+    const newLoanPayload = {
+        item_name: 'Pelota de Fútbol',
+        member_id: 'member-123',
+        due_date: '2030-01-01T10:00:00Z'
+    };
+
+    it('1. devuelve 201 y crea el préstamo cuando los datos son válidos', async () => {
+        mockMemberRepo.findById.mockResolvedValueOnce({ id: 'member-123', status: 'Activo', category: 'Pleno' });
+        
+        mockEquipmentLoanRepo.create.mockResolvedValueOnce({
+            id: 'loan-123',
+            ...newLoanPayload,
+            status: 'Loaned',
+            loan_date: new Date().toISOString()
+        });
+
+        const response = await app.inject({
+            method: 'POST',
+            url: '/api/v1/equipment-loans',
+            payload: newLoanPayload,
+        });
+
+        expect(response.statusCode).toBe(201);
+        expect(response.json().data.item_name).toBe('Pelota de Fútbol');
+        expect(mockEquipmentLoanRepo.create).toHaveBeenCalled();
+    });
+});
 
 describe('EquipmentLoanController integration - actualización (PUT)', () => {
     let app: FastifyInstance;
@@ -45,11 +93,11 @@ describe('EquipmentLoanController integration - actualización (PUT)', () => {
     // ------------------------------------------------------------------------
     it('1. devuelve 200 y actualiza el préstamo cuando los datos son válidos', async () => {
         mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
-        
+
         const updatePayload = { status: 'Returned', due_date: '2026-06-01T10:00:00Z' };
-        mockEquipmentLoanRepo.update.mockResolvedValueOnce({ 
-            ...existingLoan, 
-            ...updatePayload 
+        mockEquipmentLoanRepo.update.mockResolvedValueOnce({
+            ...existingLoan,
+            ...updatePayload
         });
 
         const response = await app.inject({
@@ -156,7 +204,7 @@ describe('EquipmentLoanController integration - eliminación (DELETE)', () => {
     // ------------------------------------------------------------------------
     it('1. devuelve 204 y elimina el préstamo cuando es válido y está en Loaned', async () => {
         mockEquipmentLoanRepo.findById.mockResolvedValueOnce(existingLoan);
-        mockEquipmentLoanRepo.delete.mockResolvedValueOnce();
+        mockEquipmentLoanRepo.delete.mockResolvedValueOnce(undefined);
 
         const response = await app.inject({
             method: 'DELETE',

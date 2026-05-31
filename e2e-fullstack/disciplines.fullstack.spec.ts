@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:3000/api/v1';
+const API = 'http://localhost:3001/api/v1';
 
 /**
  * E2E full-stack del ALTA de sanciones.
@@ -33,7 +33,7 @@ test.describe('Disciplines Alta - Full-Stack E2E', () => {
     // 3. Seleccionar el socio en el combobox
     const socioField = page.getByRole('textbox', { name: 'Socio' });
     await expect(socioField).toBeVisible();
-    await socioField.click(); 
+    await socioField.click();
     await socioField.type('Socio Alta', { delay: 100 });
     const socioResult = page.getByText(memberName, { exact: true });
     await expect(socioResult).toBeVisible();
