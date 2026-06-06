@@ -1,5 +1,26 @@
 # 2.1. Diseño de la infraestructura Docker
 
+## a) packages/api/Dockerfile.prod
+
+### Descripción del diseño
+**Propósito:**
+El propósito del archivo es compilar y empaquetar la aplicación de la API (backend) en una imagen Docker optimizada para producción. Es necesario porque:
+- 1. <u>Compilación de TypeScript</u> : Evita ejecutar herramientas de desarrollo como `tsx watch` en el entorno de ejecución final, ejecutando código JavaScript compilado de forma nativa para lograr un mejor rendimiento y menor consumo de memoria.
+- 2. <u>Descarte de dependencias de desarrollo</u> : Asegura que librerías pesadas como `vitest`, compilers y herramientas auxiliares queden fuera de la imagen de producción final.
+- 3. <u>Seguridad del runtime</u> : Facilita la ejecución bajo un usuario no-root (`node`) y permite la inmutabilidad y hardening del contenedor.
+
+**Estructura:**
+El diseño implementa un Multi-stage Build estructurado en 3 etapas:
+- **Stage 1: deps** (``node:20-alpine``): Se encarga de copiar las configuraciones del monorepo (`package*.json` y los package.json de cada paquete) e instalar todas las dependencias (`npm install`). Esta capa se almacena en caché y solo se invalida si cambian las dependencias del proyecto.
+- **Stage 2: build** (``node:20-alpine``): Copia el código fuente completo del monorepo, genera los esquemas y clientes de Prisma (`npx prisma generate`), y compila todo el código de TypeScript a JavaScript (`npm run build -w packages/api`).
+- **Stage 3: runtime** (``node:20-alpine``): Es la etapa final limpia. Copia el archivo `package*.json` e instala únicamente las dependencias de producción (`npm ci --omit=dev`), importa el cliente de Prisma generado y el build compilado en la etapa anterior (`dist`), establece el usuario sin privilegios `USER node`, y expone los puertos 3000 (API) y 9464 (métricas de OpenTelemetry).
+
+**Requisitos No Funcionales**
+- **Tamaño máximo de imagen:** Menor a 300 MB (descartando archivos fuente y dependencias de desarrollo).
+- **Tiempo de Arranque:** Menor a 5 segundos, ejecutando directamente con Node sin etapas de compilación al vuelo.
+- **Seguridad:** Ejecución con usuario no privilegiado (`node`), con control de puertos de red.
+- **Consumo de Recursos:** Memoria RAM en reposo aproximada menor a 50MB.
+
 ## b) packages/web/Dockerfile.prod
 
 ### Descripción del diseño
