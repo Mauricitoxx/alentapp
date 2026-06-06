@@ -4,6 +4,38 @@ Este informe documenta la arquitectura final de producción, las decisiones téc
 
 ---
 
+
+## 4.1 Verificación técnica 
+
+
+| Métrica | Antes (desarrollo) | Después (producción) | Mejora | Comando |
+|---------|--------------------|-----------------------|--------|---------|
+| Tamaño imagen API | `1.06` GB | `930` MB | `12.26` % | `docker images alentapp-api alentapp-api:prod` |
+| Tamaño imagen Web | `614` MB | `62.2` MB | `89.87` % | `docker images alentapp-web alentapp-web:prod` |
+| Tiempo de startup API | `10.798` s | `5.992` s | — | `time docker compose -f docker-compose.prod.yml up -d api` |
+| Memoria API (idle) | `100.2` MB | `50.07` MB | — | `docker stats --no-stream alentapp-api` |
+| Endpoints accesibles | ✅ | ✅ | — | `curl :3000/api/v1/socios` |
+| Frontend vía nginx | — | ✅ | — | `curl localhost/` |
+
+**Meta del TP:** reducción ≥ 70% (referencia: API ~1GB → ~300MB, Web ~570MB → ~170MB).
+
+
+---
+
+## 4.2 Verificación de seguridad 
+
+| Medida | Estado | Evidencia / Comando |
+|--------|--------|---------------------|
+| La API corre con usuario no-root | `[OK]` | `docker exec alentapp-api whoami` → debe decir `node` |
+| No hay npm/tsc en la imagen final | `[OK]` | `docker exec alentapp-api sh -c "which npm \|\| echo ausente"` |
+| Read-only filesystem activo | `[OK]` | `docker exec alentapp-api touch /test` → debe fallar |
+| Capabilities mínimas | `[OK]` | `cap_drop: ALL` + solo `NET_BIND_SERVICE` en el compose |
+| Variables sensibles vía `.env` | `[OK]` | `grep -i password docker-compose.prod.yml` → no aparece la password real |
+| Healthchecks funcionando | `[OK]` | `docker compose -f docker-compose.prod.yml ps` → los 3 "healthy" |
+
+---
+
+
 ## 4.4. Documentación de decisiones (Mauro Lista)
 
 ### 4.4.1. Arquitectura Final del Sistema
