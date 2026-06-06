@@ -1,3 +1,6 @@
+//  inicializar OpenTelemetry (antes de cualquier otro import)
+import './infrastructure/telemetry.js';
+
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 
@@ -46,7 +49,11 @@ import { UpdateEquipmentLoanUseCase } from './application/UpdateEquipmentLoanUse
 import { DeleteEquipmentLoanUseCase } from './application/DeleteEquipmentLoanUseCase.js';
 import { EquipmentLoanController } from './delivery/EquipmentLoanController.js';
 
+// Métricas RED (OpenTelemetry)
+import { metrics } from '@opentelemetry/api';
+
 export function buildApp() {
+    
     const server = Fastify({
         logger: {
             level: 'info',
@@ -57,6 +64,34 @@ export function buildApp() {
                 } 
             : undefined,
         },
+    });
+
+    const meter = metrics.getMeter('alentapp-api');
+    const requestCounter = meter.createCounter('http.server.requests', {
+        description: 'Total de requests HTTP',
+    });
+    const errorCounter = meter.createCounter('http.server.errors', {
+        description: 'Total de respuestas 4xx/5xx',
+    });
+    const requestDuration = meter.createHistogram('http.server.request.duration', {
+        description: 'Duración de requests',
+        unit: 'ms',
+    });
+
+    server.addHook('onRequest', async (req) => {
+        (req as any).__start = process.hrtime.bigint();
+    });
+    server.addHook('onResponse', async (req, reply) => {
+        const method = req.method;
+        const route = (req as any).routeOptions?.url ?? req.url.split('?')[0];
+        const status = String(reply.statusCode);
+        requestCounter.add(1, { method, route, status });
+        if (reply.statusCode >= 400) errorCounter.add(1, { method, route, status });
+        const start = (req as any).__start;
+        if (start) {
+            const ms = Number(process.hrtime.bigint() - start) / 1_000_000;
+            requestDuration.record(ms, { method, route });
+        }
     });
 
     server.register(cors, {
@@ -193,7 +228,7 @@ export function buildApp() {
     return server;
 }
 
-if (process.argv[1] && process.argv[1].endsWith('app.ts')) {
+if (process.argv[1] && (process.argv[1].endsWith('app.ts') || process.argv[1].endsWith('app.js'))) {
     const server = buildApp();
     const port = parseInt(process.env.PORT || '3000', 10);
 

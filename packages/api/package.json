@@ -5,6 +5,7 @@
     "main": "src/app.ts",
     "scripts": {
         "dev": "tsx watch src/app.ts",
+        "build": "node esbuild.config.mjs",
         "test": "vitest",
         "coverage": "vitest run --coverage"
     },
@@ -12,14 +13,20 @@
         "@fastify/cors": "^11.2.0",
         "@prisma/adapter-pg": "^7.8.0",
         "@prisma/client": "^7.7.0",
-        "fastify": "^5.8.5"
+        "dotenv": "^16.6.1",
+        "pg": "^8.20.0",
+        "prisma": "^7.7.0",
+        "fastify": "^5.8.5",
+        "@opentelemetry/api": "^1.9.0",
+        "@opentelemetry/sdk-node": "^0.57.0",
+        "@opentelemetry/sdk-metrics": "^1.30.0",
+        "@opentelemetry/exporter-prometheus": "^0.57.0",
+        "@opentelemetry/auto-instrumentations-node": "^0.55.0"
     },
     "devDependencies": {
         "@types/pg": "^8.20.0",
         "@vitest/coverage-v8": "^4.1.5",
-        "dotenv": "^16.6.1",
-        "pg": "^8.20.0",
-        "prisma": "^7.7.0",
+        "esbuild": "^0.25.0",
         "supertest": "^7.2.2",
         "tsx": "^4.21.0",
         "vitest": "^4.1.5"
