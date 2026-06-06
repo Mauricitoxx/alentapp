@@ -1,0 +1,49 @@
+# ============================================================================
+# packages/api/Dockerfile.prod — Multi-stage build de la API para producción
+# Se construye desde la RAÍZ del monorepo:
+#   docker build -f packages/api/Dockerfile.prod -t alentapp-api:prod .
+# ============================================================================
+
+# ---------- STAGE 1: deps ----------
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+COPY packages/api/package.json ./packages/api/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/web/package.json ./packages/web/
+RUN npm ci --omit=dev --workspace=packages/api --include-workspace-root
+
+# ---------- STAGE 2: build ----------
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+COPY packages/api/package.json ./packages/api/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/web/package.json ./packages/web/
+RUN npm ci
+COPY packages/shared ./packages/shared
+COPY packages/api ./packages/api
+COPY tsconfig.json ./
+WORKDIR /app/packages/api
+RUN npx prisma generate --config prisma.config.ts
+RUN npm run build
+
+# ---------- STAGE 3: runtime ----------
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/packages/api/dist ./packages/api/dist
+COPY --from=build /app/packages/api/prisma ./packages/api/prisma
+COPY --from=build /app/packages/api/prisma.config.ts ./packages/api/prisma.config.ts
+COPY --from=build /app/packages/api/src/generated ./packages/api/src/generated
+COPY --from=build /app/packages/api/docker-entrypoint.sh ./packages/api/docker-entrypoint.sh
+COPY package.json ./
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+    && chmod +x ./packages/api/docker-entrypoint.sh
+RUN chown -R node:node /app
+USER node
+EXPOSE 3000 9464
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+    CMD node -e "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+ENTRYPOINT ["sh", "./packages/api/docker-entrypoint.sh"]
