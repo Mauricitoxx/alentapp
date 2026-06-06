@@ -15,7 +15,7 @@ import { LuPlus, LuRefreshCw, LuPen, LuTrash } from "react-icons/lu";
 import { useEffect, useState } from "react";
 import { equipmentLoansService } from "../services/equipmentLoans"; 
 import { membersService } from "../services/members";
-import type { EquipmentLoanDTO, CreateEquipmentLoanRequest, MemberDTO } from "@alentapp/shared";
+import type { EquipmentLoanDTO, MemberDTO } from "@alentapp/shared";
 import { MemberCombobox } from "../components/MemberCombobox";
 import { 
   DialogRoot, 
@@ -191,22 +191,27 @@ export function EquipmentLoansView() {
                 </Field>
                 {editingLoanId && (
                   <Field label="Estado" required>
-                    <Box 
-                      as="select"
-                      w="full"
-                      p="2"
-                      borderRadius="md"
-                      borderWidth="1px"
-                      borderColor="border"
-                      bg="bg.panel"
-                      color="fg"
+                    <select
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: (e.target as HTMLSelectElement).value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          status: e.target.value,
+                        })
+                      }
                     >
-                      <Box as="option" value="Loaned" bg="bg.panel" color="fg">Prestado (Loaned)</Box>
-                      <Box as="option" value="Returned" bg="bg.panel" color="fg">Devuelto (Returned)</Box>
-                      <Box as="option" value="Damaged" bg="bg.panel" color="fg">Dañado (Damaged)</Box>
-                    </Box>
+                      <option value="Loaned">
+                        Prestado (Loaned)
+                      </option>
+
+                      <option value="Returned">
+                        Devuelto (Returned)
+                      </option>
+
+                      <option value="Damaged">
+                        Dañado (Damaged)
+                      </option>
+                    </select>
                   </Field>
                 )}
               </Stack>
