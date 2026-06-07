@@ -35,6 +35,53 @@ Este informe documenta la arquitectura final de producción, las decisiones téc
 
 ---
 
+### 4.3. Verificación de observabilidad
+
+Se realizó una auditoría técnica para validar la correcta instrumentación y flujo de datos dentro del stack de observabilidad (OpenTelemetry, Prometheus y Grafana). Los resultados de las pruebas funcionales se detallan en la siguiente tabla:
+
+| Medida / Componente | Estado | Comando / Método de Verificación | Evidencia | Descripción |
+| :--- | :---: | :--- | :---: | :--- |
+| **Exportación OTLP** | `[OK]` | `curl.exe -s http://localhost:9464/metrics` | `[Captura 1]` | Validación de métricas expuestas en formato Prometheus. |
+| **Scraping (Prometheus)** | `[OK]` | `http://localhost:9090/targets` | `[Captura 2]` | Confirmación de estado "UP" en el target `alentapp-api`. |
+| **Datasource Grafana** | `[OK]` | Panel "Data Sources" | `[Captura 3]` | Conexión establecida entre Prometheus y Grafana. |
+| **Dashboard RED** | `[OK]` | Visualización UI Dashboard RED | `[Captura 4]` | Carga exitosa de paneles bajo estándar RED. |
+| **Tráfico en Tiempo Real** | `[OK]` | Script inyección de tráfico (curl) |    | Respuesta dinámica ante peticiones GET. |
+| **Detección de Errores** | `[OK]` | `curl` a rutas inexistentes (404) | `[Captura 5]` | Registro y visualización de errores 4xx. |
+
+**Evidencias:**
+
+**Evidencia 1: Exportación de métricas (OTLP)**
+Se verificó la exposición del endpoint de métricas mediante `curl`. La salida confirma que el SDK de OpenTelemetry está exportando correctamente las métricas en el formato requerido:
+
+![Exportación OTLP](exportacion-otml.png)
+
+**Evidencia 2: Prometheus Targets**
+Confirmación de que Prometheus está realizando el *scraping* correctamente desde el endpoint de la API, mostrando el estado "UP" (en verde):
+
+![Prometheus Targets](prometheus-targets.png)
+
+**Evidencia 3: Datasource de Grafana**
+Configuración validada del *Data Source*, estableciendo la conexión técnica entre Prometheus y Grafana:
+
+![Datasource](gafana.png)
+
+**Evidencia 4: Dashboard RED (Estado de Operación Normal)**
+Visualización de los paneles RED bajo condiciones de operación normal. En este estado, el sistema presenta un comportamiento estable con una latencia mínima y tasa de errores nula. Es correcto observar el mensaje "No Data" en el panel de errores, ya que confirma la ausencia de fallos en el sistema:
+
+![Dashboard RED - Saludable](dashboard-red.png)
+
+
+**Evidencia 5: Detección de Errores (4xx)**
+Registro y visualización en tiempo real de errores 404 tras la inyección de tráfico inválido, validando la sensibilidad del sistema de alertas:
+
+![Detección de Errores](deteccion-errores.png)
+
+
+### Análisis de Resultados
+La infraestructura implementada permite el monitoreo *end-to-end* del ciclo de vida de las peticiones HTTP. La exportación de métricas mediante **OpenTelemetry** garantiza un estándar de datos desacoplado del backend, mientras que **Prometheus** actúa como repositorio centralizado. 
+
+Durante las pruebas, se verificó que el sistema responde de manera inmediata al tráfico generado bajo el estándar **RED** (*Rate, Errors, Duration*). La detección de errores 4xx confirma que la arquitectura es resiliente y capaz de reportar anomalías ante peticiones inválidas, permitiendo una trazabilidad clara para la resolución de incidentes en el entorno productivo. La observabilidad ha sido testeada bajo condiciones de carga controlada, demostrando la fiabilidad del sistema.
+---
 
 ## 4.4. Documentación de decisiones (Mauro Lista)
 
