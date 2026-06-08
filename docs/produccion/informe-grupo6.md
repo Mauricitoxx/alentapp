@@ -10,8 +10,8 @@ Este informe documenta la arquitectura final de producción, las decisiones téc
 
 | Métrica | Antes (desarrollo) | Después (producción) | Mejora | Comando |
 |---------|--------------------|-----------------------|--------|---------|
-| Tamaño imagen API | `1.06` GB | `930` MB | `12.26` % | `docker images alentapp-api alentapp-api:prod` |
-| Tamaño imagen Web | `614` MB | `62.2` MB | `89.87` % | `docker images alentapp-web alentapp-web:prod` |
+| Tamaño imagen API | `1.06` GB | `271` MB | `74.43` % | `docker images alentapp-api alentapp-api:prod` |
+| Tamaño imagen Web | `614` MB | `26.3` MB | `95.71` % | `docker images alentapp-web alentapp-web:prod` |
 | Tiempo de startup API | `10.798` s | `5.992` s | — | `time docker compose -f docker-compose.prod.yml up -d api` |
 | Memoria API (idle) | `100.2` MB | `50.07` MB | — | `docker stats --no-stream alentapp-api` |
 | Endpoints accesibles | ✅ | ✅ | — | `curl :3000/api/v1/socios` |
