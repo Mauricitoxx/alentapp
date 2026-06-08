@@ -46,7 +46,7 @@ describe('EquipmentLoanController integration - creación (POST)', () => {
 
     it('1. devuelve 201 y crea el préstamo cuando los datos son válidos', async () => {
         mockMemberRepo.findById.mockResolvedValueOnce({ id: 'member-123', status: 'Activo', category: 'Pleno' });
-        
+
         mockEquipmentLoanRepo.create.mockResolvedValueOnce({
             id: 'loan-123',
             ...newLoanPayload,

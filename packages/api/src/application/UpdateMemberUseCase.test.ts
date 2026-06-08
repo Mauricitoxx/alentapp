@@ -1,68 +1,72 @@
-import { LockerRepository } from '../domain/LockerRepository.js';
-import { LockerValidator } from '../domain/services/LockerValidator.js';
-import { LockerDTO, UpdateLockerRequest } from '@alentapp/shared';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { UpdateMemberUseCase } from './UpdateMemberUseCase.js';
+import { MemberRepository } from '../domain/MemberRepository.js';
+import { MemberValidator } from '../domain/services/MemberValidator.js';
+import { UpdateMemberRequest, MemberDTO } from '@alentapp/shared';
 
-export class UpdateLockerUseCase {
-    constructor(
-        private readonly lockerRepository: LockerRepository,
-        private readonly lockerValidator: LockerValidator
-    ) {}
+describe('UpdateMemberUseCase', () => {
+    const mockMemberRepo = {
+        findById: vi.fn(),
+        update: vi.fn(),
+    } as unknown as MemberRepository;
 
-    async execute(id: string, data: UpdateLockerRequest): Promise<LockerDTO> {
-        // 1. Validar existencia del casillero (404 Recurso Inexistente)
-        const existingLocker = await this.lockerRepository.findById(id);
-        if (!existingLocker) {
-            const error = new Error('El casillero no existe');
-            (error as any).statusCode = 404;
-            throw error;
-        }
+    const mockMemberValidator = {
+        validateEmail: vi.fn(),
+        validateDniIsUnique: vi.fn(),
+        isMinor: vi.fn(),
+    } as unknown as MemberValidator;
 
-        // 2. Validar formatos físicos (400 Datos Faltantes / Malformados)
-        try {
-            if (data.number !== undefined) this.lockerValidator.validateNumberFormat(data.number);
-            if (data.location !== undefined) this.lockerValidator.validateLocation(data.location);
-        } catch (err: any) {
-            err.statusCode = 400;
-            throw err;
-        }
+    const useCase = new UpdateMemberUseCase(mockMemberRepo, mockMemberValidator);
 
-        // 3. Validar duplicidad de número excluyendo el casillero actual (409 Conflicto)
-        if (data.number !== undefined && data.number !== existingLocker.number) {
-            try {
-                await this.lockerValidator.validateNumberIsUnique(data.number, id);
-            } catch (err: any) {
-                err.statusCode = 409;
-                throw err;
-            }
-        }
+    const mockExistingMember: MemberDTO = {
+        id: 'uuid-1',
+        dni: '12345678',
+        name: 'Original Name',
+        email: 'original@test.com',
+        birthdate: '1990-01-01',
+        category: 'Pleno',
+        status: 'Activo',
+        created_at: '2026-04-20T00:00:00.000Z'
+    };
 
-        // --- Lógica de Estados por Software ---
-        let statusFinal = data.status !== undefined ? data.status : existingLocker.status;
-        let memberIdFinal = data.member_id !== undefined ? data.member_id : existingLocker.member_id;
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(mockMemberRepo.findById).mockResolvedValue(mockExistingMember);
+    });
 
-        // Transición automática: si se vincula un socio, pasa a Occupied
-        if (data.member_id !== undefined && data.member_id !== null) {
-            statusFinal = 'Occupied';
-        } 
-        // Transición automática: si se desvincula enviando null, regresa a Available
-        else if (data.member_id === null && statusFinal === 'Occupied') {
-            statusFinal = 'Available';
-        }
+    it('debe lanzar error si el miembro no existe', async () => {
+        vi.mocked(mockMemberRepo.findById).mockResolvedValueOnce(null);
+        await expect(useCase.execute('uuid-no', {})).rejects.toThrow('El miembro no existe');
+    });
 
-        // 4. 🔥 REGLA CRÍTICA TDD-011: Bloquear asignación en Mantenimiento (400 Bad Request)
-        if (statusFinal === 'Maintenance' && memberIdFinal !== null && memberIdFinal !== undefined) {
-            const error = new Error('Un casillero no puede asignarse si su status es Maintenance');
-            (error as any).statusCode = 400;
-            throw error;
-        }
+    it('debe validar email y dni si son enviados y distintos', async () => {
+        const updateData: UpdateMemberRequest = { email: 'new@test.com', dni: '87654321' };
+        vi.mocked(mockMemberRepo.update).mockResolvedValueOnce({ ...mockExistingMember, ...updateData });
+        
+        await useCase.execute('uuid-1', updateData);
+        
+        expect(mockMemberValidator.validateEmail).toHaveBeenCalledWith('new@test.com');
+        expect(mockMemberValidator.validateDniIsUnique).toHaveBeenCalledWith('87654321', 'uuid-1');
+    });
 
-        // Estructuramos el payload limpio final calculado
-        const payloadLimpio: UpdateLockerRequest = {
-            ...data,
-            status: statusFinal,
-            member_id: memberIdFinal
-        };
+    it('NO debe validar dni si es enviado pero es igual al original', async () => {
+        const updateData: UpdateMemberRequest = { dni: '12345678' };
+        vi.mocked(mockMemberRepo.update).mockResolvedValueOnce({ ...mockExistingMember });
+        
+        await useCase.execute('uuid-1', updateData);
+        
+        expect(mockMemberValidator.validateDniIsUnique).not.toHaveBeenCalled();
+    });
 
-        return await this.lockerRepository.update(id, payloadLimpio);
-    }
-}
+    it('debe forzar categoría Cadete si se actualiza fecha y es menor', async () => {
+        const updateData: UpdateMemberRequest = { birthdate: '2015-01-01', category: 'Pleno' };
+        vi.mocked(mockMemberValidator.isMinor).mockReturnValueOnce(true);
+        vi.mocked(mockMemberRepo.update).mockResolvedValueOnce({ ...mockExistingMember, category: 'Cadete', birthdate: '2015-01-01' });
+        
+        await useCase.execute('uuid-1', updateData);
+        
+        expect(mockMemberRepo.update).toHaveBeenCalledWith('uuid-1', expect.objectContaining({
+            category: 'Cadete'
+        }));
+    });
+});
