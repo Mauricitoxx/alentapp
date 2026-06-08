@@ -78,10 +78,28 @@ export function buildApp() {
         unit: 'ms',
     });
 
+    let activeRequestsCount = 0;
+    const activeRequestsGauge = meter.createObservableGauge('http.requests.active', {
+        description: 'Número de peticiones HTTP activas y concurrentes',
+    });
+    activeRequestsGauge.addCallback((result) => {
+        result.observe(activeRequestsCount);
+    });
+
+    const memoryGauge = meter.createObservableGauge('process.memory.usage', {
+        description: 'Uso de memoria heap del proceso Node.js',
+        unit: 'bytes',
+    });
+    memoryGauge.addCallback((result) => {
+        result.observe(process.memoryUsage().heapUsed);
+    });
+
     server.addHook('onRequest', async (req) => {
+        activeRequestsCount++;
         (req as any).__start = process.hrtime.bigint();
     });
     server.addHook('onResponse', async (req, reply) => {
+        activeRequestsCount = Math.max(0, activeRequestsCount - 1);
         const method = req.method;
         const route = (req as any).routeOptions?.url ?? req.url.split('?')[0];
         const status = String(reply.statusCode);
